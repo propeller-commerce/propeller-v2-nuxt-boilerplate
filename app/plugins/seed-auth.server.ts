@@ -1,4 +1,5 @@
 import { GraphQLClient } from '@propeller-commerce/propeller-sdk-v2';
+import type { Contact, Customer } from '@propeller-commerce/propeller-sdk-v2';
 import { createServices, toPlain } from 'propeller-v2-vue-ui/shared';
 import { useAuthStore } from '~/stores/auth';
 
@@ -19,15 +20,20 @@ import { useAuthStore } from '~/stores/auth';
  * Cost: one extra `services.user.getViewer({})` per authenticated SSR
  * navigation. Bypassed entirely when no `access_token` cookie is present.
  *
+ * Plugin ordering: this MUST run AFTER `@pinia/nuxt` installs Pinia onto
+ * the app, otherwise `useAuthStore()` throws "getActivePinia() was called
+ * with no active Pinia" and the SSR pass dies with an unhandled rejection.
+ * `dependsOn: ['pinia']` pins the order declaratively. Do NOT add
+ * `enforce: 'pre'` — that races against Pinia's installer.
+ *
  * Note: inlines the GraphQLClient construction instead of importing from
- * `~~/server/utils/infra.ts`. That file pulls `nitropack/runtime` which
- * is only resolvable inside the Nitro runtime context — importing it
- * from a Nuxt server plugin throws an ERR_PACKAGE_PATH_NOT_EXPORTED at
- * request time.
+ * `~~/server/utils/infra.ts`. That file pulls `nitropack/runtime` aliases
+ * which only resolve inside the Nitro runtime context — importing it
+ * from a Nuxt server plugin throws ERR_PACKAGE_PATH_NOT_EXPORTED.
  */
 export default defineNuxtPlugin({
   name: 'seed-auth',
-  enforce: 'pre',
+  dependsOn: ['pinia'],
   async setup() {
     const token = useCookie('access_token').value;
     if (!token) return;
@@ -48,8 +54,8 @@ export default defineNuxtPlugin({
       const services = createServices(client);
       const viewer = await services.user.getViewer({});
       if (!viewer) return;
+      const plain = toPlain(viewer) as Contact | Customer;
       const auth = useAuthStore();
-      const plain = toPlain(viewer) as Parameters<typeof auth.hydrateFromServer>[0];
       auth.hydrateFromServer(plain, token);
     } catch (e) {
       console.error('[seed-auth] failed to resolve viewer:', e);
