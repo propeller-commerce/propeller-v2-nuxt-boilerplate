@@ -184,17 +184,20 @@ function handleAddAddress(type: AddressType) {
 }
 
 async function handleEditAddress(address: Address) {
-  await updateAddress(Number(address.id), address as Partial<AddressInput>);
+  const result = await updateAddress(Number(address.id), address as Partial<AddressInput>);
+  if (result.success) await authStore.refreshUser();
 }
 async function handleDeleteAddress(address: Address) {
-  await deleteAddress(Number(address.id));
+  const result = await deleteAddress(Number(address.id));
+  if (result.success) await authStore.refreshUser();
 }
 async function handleSetDefault(address: Address) {
   if (!address.id) return;
-  await setDefaultAddress(Number(address.id));
+  const result = await setDefaultAddress(Number(address.id));
+  if (result.success) await authStore.refreshUser();
 }
 async function handleSaveNewAddress(address: any) {
-  await createAddress({
+  const result = await createAddress({
     company: address.company || undefined,
     gender: address.gender || undefined,
     firstName: address.firstName || undefined,
@@ -211,7 +214,10 @@ async function handleSaveNewAddress(address: any) {
     isDefault: (address.isDefault as YesNo) || YesNo.N,
     type: addModalType.value,
   });
-  showAddModal.value = false;
+  if (result.success) {
+    await authStore.refreshUser();
+    showAddModal.value = false;
+  }
 }
 
 useHead({ title: 'Addresses' });

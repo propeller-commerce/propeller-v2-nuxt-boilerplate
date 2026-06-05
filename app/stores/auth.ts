@@ -163,6 +163,33 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = t;
   }
 
+  /**
+   * Re-fetch the full viewer from the backend and replace `user.value` with
+   * the fresh result. Use after any mutation that changes the viewer payload
+   * (address CRUD, company switch, profile update). Mirrors propeller-next's
+   * `AuthContext.refreshUser`.
+   *
+   * Client-only: server-side, the viewer is seeded at SSR boot from the
+   * cookie (see `server/plugins/seed-auth.ts`) — there's no second pass
+   * during render.
+   */
+  async function refreshUser(): Promise<void> {
+    if (!isBrowser) return;
+    try {
+      const nuxtApp = useNuxtApp();
+      const services = nuxtApp.$services as { user?: { getViewer: (args: object) => Promise<unknown> } } | undefined;
+      const viewer = await services?.user?.getViewer({});
+      if (viewer) {
+        const clean = sanitizeUser(viewer) as User;
+        user.value = clean;
+        safeStorage.setItem('user', JSON.stringify(clean));
+        window.dispatchEvent(new CustomEvent('userRefreshed', { detail: { user: clean } }));
+      }
+    } catch (e) {
+      console.error('refreshUser failed:', e);
+    }
+  }
+
   return {
     user,
     token,
@@ -176,5 +203,6 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     isAuthManagerForCompany,
     hydrateFromServer,
+    refreshUser,
   };
 });
