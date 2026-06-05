@@ -1,0 +1,40 @@
+{
+  "site": {
+    "title": "Propeller Shop",
+    "tagline": "Headless commerce, Nuxt-powered"
+  },
+  "nav": {
+    "home": "Home",
+    "cart": "Cart",
+    "login": "Login",
+    "register": "Register",
+    "account": "My account",
+    "logout": "Logout",
+    "search": "Search"
+  },
+  "pages": {
+    "home": "Home",
+    "cart": "Shopping cart",
+    "checkout": "Checkout",
+    "checkoutThankYou": "Thank you for your order",
+    "blog": "Blog",
+    "login": "Login",
+    "register": "Create account",
+    "forgotPassword": "Forgot password",
+    "terms": "Terms and conditions",
+    "account": "My account",
+    "accountAddresses": "Addresses",
+    "accountOrders": "Orders",
+    "accountQuotes": "Quotes",
+    "accountQuoteRequests": "Quote requests",
+    "accountFavorites": "Favorites",
+    "accountInvoices": "Invoices",
+    "accountPriceRequests": "Price requests",
+    "accountAuthorizationRequests": "Authorization requests",
+    "accountAuthorizationSettings": "Authorization settings",
+    "search": "Search results",
+    "categoryNotFound": "Category not found",
+    "productNotFound": "Product not found",
+    "clusterNotFound": "Cluster not found"
+  }
+}

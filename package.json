@@ -1,0 +1,40 @@
+{
+  "name": "propeller-nuxt",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "clean": "powershell -Command \"Remove-Item -Recurse -Force .nuxt -ErrorAction SilentlyContinue"
+  },
+  "dependencies": {
+    "@propeller-commerce/propeller-sdk-v2": "^0.11.1",
+    "propeller-v2-vue-ui": "github:propeller-commerce/propeller-v2-vue-ui#master",
+    "@pinia/nuxt": "^0.6.0",
+    "@nuxtjs/i18n": "^9.5.0",
+    "@vueuse/core": "^14.2.1",
+    "pinia": "^2.2.0",
+    "qs": "^6.15.0",
+    "marked": "^18.0.0",
+    "lodash.debounce": "^4.0.8",
+    "swiper": "^12.1.3",
+    "lucide-vue-next": "^0.469.0",
+    "vue-hot-toast": "^0.0.1-rc.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "nuxt": "^3.14.0",
+    "@nuxtjs/tailwindcss": "^7.0.0-beta.0",
+    "@types/qs": "^6.15.0",
+    "@types/lodash.debounce": "^4.0.9",
+    "typescript": "~5.6.0",
+    "vue-tsc": "^2.1.10"
+  }
+}

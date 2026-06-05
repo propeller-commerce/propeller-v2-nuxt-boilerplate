@@ -1,0 +1,169 @@
+/**
+ * Global styles — ports propeller-vue/src/style.css verbatim.
+ *
+ * Brand palette + radius tokens defined as CSS custom properties so the
+ * propeller-v2-vue-ui package's components (which read `var(--primary)`,
+ * `var(--radius-control)`, etc) resolve consistently across all three
+ * consumer apps.
+ *
+ * Tailwind v4 picks the @theme inline block up automatically when scanning
+ * this file via @nuxtjs/tailwindcss v7-beta.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+
+:root {
+  /* Base */
+  --background: #ffffff;
+  --foreground: #111111;
+  --foreground-subtle: #9ca3af;
+
+  /* Surface / Card */
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+  --surface-hover: #f9fafb;
+
+  /* Brand / Primary */
+  --primary: #7f22fe;
+  --primary-foreground: #ffffff;
+
+  /* Secondary / Muted */
+  --secondary: #7f22fe;
+  --secondary-foreground: #ffffff;
+  --muted: #f5f5f5;
+  --muted-foreground: #6b7280;
+
+  /* Interactive / Accent */
+  --accent: #f5f5f5;
+  --accent-foreground: #111111;
+
+  /* Status */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+
+  /* Borders / Inputs */
+  --border: #e5e7eb;
+  --border-subtle: #f3f4f6;
+  --input: #d1d5db;
+  --ring: #9084ff;
+
+  /* Measurements */
+  --radius: 4px;
+  --radius-control: 6px;
+  --radius-container: 8px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-foreground-subtle: var(--foreground-subtle);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-surface-hover: var(--surface-hover);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: calc(var(--radius) - 0px);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-control: var(--radius-control);
+  --radius-container: var(--radius-container);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+}
+
+@layer utilities {
+  .container-width {
+    width: 100%;
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  @media (min-width: 640px) {
+    .container-width {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .container-width {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+}
+
+/*
+ * Catalog page layout safety net — Tailwind v4 emits `lg:w-64` and
+ * `lg:flex-row` as nested rules under @media (width >= 64rem). Some
+ * environments don't resolve the nested @media reliably in flex children,
+ * leaving the aside at 100% width and squeezing the products column.
+ * Re-declare the same constraints with the legacy `min-width` syntax so
+ * the catalog grid always renders side-by-side from 1024px up.
+ */
+@media (min-width: 1024px) {
+  .propeller-catalog-grid {
+    flex-direction: row;
+  }
+  .propeller-catalog-aside {
+    width: 16rem;
+    flex: 0 0 16rem;
+  }
+}
+
+/*
+ * Header search bar visibility — desktop only. Pairs with the
+ * `lg:` safety-net rationale above (legacy min-width syntax for
+ * environments where Tailwind v4's nested @media doesn't resolve).
+ */
+.propeller-header-search {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .propeller-header-search {
+    display: block;
+  }
+}
