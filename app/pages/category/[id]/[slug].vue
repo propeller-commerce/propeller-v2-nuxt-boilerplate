@@ -17,7 +17,7 @@
         :labels="breadcrumbsLabels"
       />
 
-      <GridTitle :title="getCategoryName()" :labels="gridTitleLabels" />
+      <GridTitle :title="categoryName" :labels="gridTitleLabels" />
 
       <CategoryDescription v-if="category" :category="category as any" />
 
@@ -301,12 +301,17 @@ const activeTextFilters = computed<ProductTextFilterInput[]>(() =>
     }))
 );
 
-function getCategoryName(): string {
+// Computed (not a function) so the template binding survives the
+// script-setup compiler's handling of bindings declared after the
+// top-level `await useFetch(...)` above. Declaring this as
+// `function getCategoryName()` breaks $setup exposure on hydration
+// and the page renders "$setup.getCategoryName is not a function".
+const categoryName = computed<string>(() => {
   if (!category.value) return slug.value;
   const nameArr = (category.value as any).name || (category.value as any).names || [];
   const match = nameArr.find((n: any) => n.language === languageStore.language);
   return match?.value || nameArr[0]?.value || slug.value;
-}
+});
 
 const seoTitle = computed(
   () =>
@@ -314,7 +319,7 @@ const seoTitle = computed(
       (category.value as any)?.metadataTitles,
       (category.value as any)?.name,
       languageStore.language
-    ) || getCategoryName() || 'Category'
+    ) || categoryName.value || 'Category'
 );
 const seoDescription = computed(
   () =>
