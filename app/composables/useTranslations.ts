@@ -1,24 +1,29 @@
 import { computed, type ComputedRef } from 'vue';
 import { useLanguageStore } from '~/stores/language';
+import { getTranslationProvider } from '~/lib/i18n';
 
 /**
- * Package-namespaced translations composable. Mirrors propeller-vue's
- * `useTranslations(namespace)` API — returns a ComputedRef of label keys
- * for the given namespace, reactive to the active language.
+ * Read a namespace's translated strings, reactive to the current language.
  *
- * The package's components accept this object via their `:labels` prop. For
- * now the provider returns an empty record per namespace, which makes the
- * package fall back to its own English defaults. Real namespace dictionaries
- * live in the propeller-vue repo (`src/locales/{en,nl}/<Component>.json`) and
- * can be copied verbatim into `app/locales/` here when needed.
+ * Returns a ComputedRef so language switches re-evaluate and rebind the
+ * `:labels` prop. The underlying getNamespace() call is sync; the
+ * ComputedRef is the Vue-side reactivity wrapper (equivalent to React's
+ * Context update path in propeller-next).
+ *
+ * Works in SSR because useLanguageStore() returns the request-scoped Pinia
+ * store the seed-auth.server.ts (and middleware/language.global.ts) plugins
+ * populate before any view setup runs.
+ *
+ * Mirrors propeller-vue/src/lib/i18n/composable.ts line-for-line — keep
+ * the two implementations in sync so changes flow in either direction
+ * with minimal diff.
  */
-export function useTranslations(_namespace: string): ComputedRef<Record<string, string>> {
+export function useTranslations(
+  namespace: string,
+): ComputedRef<Record<string, string>> {
   const languageStore = useLanguageStore();
   return computed(() => {
-    // Keying on languageStore.language so the computed re-evaluates on
-    // language switch — when the dictionary backend lands, change the
-    // body to look up `_namespace` against `language` and return the map.
-    void languageStore.language;
-    return {} as Record<string, string>;
+    const locale = languageStore.language.toLowerCase();
+    return getTranslationProvider().getNamespace(locale, namespace);
   });
 }
