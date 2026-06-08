@@ -23,6 +23,12 @@
           <div class="h-64 bg-surface-hover rounded-[var(--radius-container)] w-full" />
         </div>
 
+        <AccessErrorView
+          v-else-if="error"
+          :kind="classifyApiError(error)"
+          class="container mx-auto px-4"
+        />
+
         <div v-else-if="order" class="space-y-8">
           <div class="bg-card rounded-[var(--radius-container)] shadow-sm border border-border p-6">
             <OrderSummary
@@ -103,6 +109,8 @@ import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref } from '~/utils/config';
 import { COUNTRIES } from '~/utils/countries';
 import { useTranslations } from '~/composables/useTranslations';
+import AccessErrorView from '~/components/access/AccessErrorView.vue';
+import { classifyApiError } from '~/lib/errors';
 
 const orderSummaryLabels = useTranslations('OrderSummary');
 const orderItemCardLabels = useTranslations('OrderItemCard');
@@ -120,6 +128,7 @@ const {
   fetchOrder,
   currentOrder: order,
   orderLoading: loading,
+  error,
 } = useOrders({
   graphqlClient: $graphqlClient as any,
   user: computed(() => authStore.user as AnyUser),

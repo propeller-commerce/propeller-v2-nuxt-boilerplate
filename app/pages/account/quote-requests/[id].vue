@@ -12,9 +12,12 @@
       <div class="h-4 bg-slate-100 rounded w-1/2 mx-auto animate-pulse" />
     </div>
 
-    <div v-else-if="error" class="p-8 text-center text-destructive">
-      <p>{{ String(error) }}</p>
-    </div>
+    <AccessErrorView
+      v-else-if="error"
+      :kind="classifyApiError(error)"
+      backHref="/account/quote-requests"
+      :backLabel="errorBackLabel"
+    />
 
     <ClientOnly v-else-if="quote">
       <div class="space-y-8">
@@ -120,6 +123,8 @@ import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref } from '~/utils/config';
 import { COUNTRIES } from '~/utils/countries';
 import { useTranslations } from '~/composables/useTranslations';
+import AccessErrorView from '~/components/access/AccessErrorView.vue';
+import { classifyApiError } from '~/lib/errors';
 
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
@@ -134,6 +139,8 @@ const quoteActionsLabels = useTranslations('QuoteActions');
 const orderItemCardLabels = useTranslations('OrderItemCard');
 const orderBonusItemsLabels = useTranslations('OrderBonusItems');
 const orderTotalsLabels = useTranslations('OrderTotals');
+const errorPagesLabels = useTranslations('ErrorPages');
+const errorBackLabel = computed(() => errorPagesLabels.value.backToQuoteRequests);
 
 const quoteId = route.params.id as string;
 
