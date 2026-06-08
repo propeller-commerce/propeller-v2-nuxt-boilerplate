@@ -1,56 +1,61 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { AccountIconAndMenu } from 'propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCompanyStore } from '~/stores/company';
 import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';
+import { useTranslations } from '~/composables/useTranslations';
 
 const auth = useAuthStore();
 const company = useCompanyStore();
 const language = useLanguageStore();
-const route = useRoute();
 const router = useRouter();
+const route = useRoute();
 
-const isAuthManager = computed(() =>
+const accountIconAndMenuLabels = useTranslations('AccountIconAndMenu');
+const loginFormLabels = useTranslations('LoginForm');
+
+const currentPath = computed(() => '/' + route.path.replace(/^\//, ''));
+
+// Delegate the auth-manager check to the auth store. The store reads the
+// real SDK schema (purchaseAuthorizationConfigs.items[].purchaseRole) — the
+// older local version checked non-existent `roles` / `companyRoles` fields
+// and always returned false, hiding the manager-only menu items.
+const isAuthManagerForCompany = computed(() =>
   auth.isAuthManagerForCompany(auth.user, company.companyId ?? undefined)
 );
 
-interface Link {
-  label: string;
-  href: string;
-}
-
-const links = computed<Link[]>(() => {
-  const base: Link[] = [
-    { label: 'Dashboard', href: '/account' },
-    { label: 'Addresses', href: '/account/addresses' },
-    { label: 'Orders', href: '/account/orders' },
-    { label: 'Quotes', href: '/account/quotes' },
-    { label: 'Quote requests', href: '/account/quote-requests' },
-    { label: 'Favorites', href: '/account/favorites' },
-    { label: 'Invoices', href: '/account/invoices' },
-    { label: 'Price requests', href: '/account/price-requests' },
+// All hrefs go through localizeHref so they pick up the current language
+// prefix (NL stays unprefixed, EN becomes /en/account/...). The computed
+// depends on languageStore.language so the menu re-renders when switching.
+const menuLinks = computed(() => {
+  const lang = language.language;
+  return [
+    { label: 'Dashboard', href: localizeHref('/account', lang) },
+    { label: 'Addresses', href: localizeHref('/account/addresses', lang) },
+    { label: 'Orders', href: localizeHref('/account/orders', lang) },
+    { label: 'Quotes', href: localizeHref('/account/quotes', lang) },
+    { label: 'Quote requests', href: localizeHref('/account/quote-requests', lang) },
+    { label: 'Favorites', href: localizeHref('/account/favorites', lang) },
+    { label: 'Invoices', href: localizeHref('/account/invoices', lang) },
+    { label: 'Price requests', href: localizeHref('/account/price-requests', lang) },
+    ...(isAuthManagerForCompany.value
+      ? [
+          { label: 'Authorization settings', href: localizeHref('/account/authorization-settings', lang) },
+          { label: 'Authorization requests', href: localizeHref('/account/authorization-requests', lang) },
+        ]
+      : []),
   ];
-  if (isAuthManager.value) {
-    base.push(
-      { label: 'Authorization settings', href: '/account/authorization-settings' },
-      { label: 'Authorization requests', href: '/account/authorization-requests' }
-    );
-  }
-  return base;
 });
 
-function isActive(href: string): boolean {
-  const path = route.path;
-  if (href === '/account') return path === '/account' || path === localizeHref('/account', language.language);
-  return path === localizeHref(href, language.language) || path.startsWith(localizeHref(href, language.language));
+function handleMenuItemClick(href: string) {
+  // The href already carries the language prefix from menuLinks above, so
+  // router.push receives the canonical path directly — no second wrap needed.
+  router.push(href);
 }
 
-function go(href: string) {
-  router.push(localizeHref(href, language.language));
-}
-
-async function logout() {
+async function handleLogout() {
   auth.logout();
   await router.push(localizeHref('/login', language.language));
 }
@@ -58,28 +63,18 @@ async function logout() {
 
 <template>
   <aside class="w-full lg:w-72 flex-shrink-0">
-    <div class="border rounded-lg bg-card overflow-hidden sticky top-24">
-      <ul class="divide-y">
-        <li v-for="link in links" :key="link.href">
-          <button
-            type="button"
-            class="w-full text-left px-4 py-3 hover:bg-muted"
-            :class="{ 'font-semibold bg-muted/50': isActive(link.href) }"
-            @click="go(link.href)"
-          >
-            {{ link.label }}
-          </button>
-        </li>
-        <li>
-          <button
-            type="button"
-            class="w-full text-left px-4 py-3 hover:bg-muted text-destructive"
-            @click="logout"
-          >
-            Logout
-          </button>
-        </li>
-      </ul>
+    <div class="overflow-hidden border border-border bg-card shadow-sm rounded-[var(--radius-container)] sticky top-24">
+      <ClientOnly>
+        <AccountIconAndMenu
+          variant="sidebar"
+          :currentPath="currentPath"
+          :onMenuItemClick="handleMenuItemClick"
+          :onLogoutClick="handleLogout"
+          :menuLinks="menuLinks"
+          :labels="accountIconAndMenuLabels"
+          :loginFormLabels="loginFormLabels"
+        />
+      </ClientOnly>
     </div>
   </aside>
 </template>
