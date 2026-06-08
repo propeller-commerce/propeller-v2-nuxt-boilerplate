@@ -275,6 +275,7 @@ import { useCompanyStore } from '~/stores/company';
 import { usePriceStore } from '~/stores/price';
 import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref, stripLanguagePrefix, detectLanguageFromPath } from '~/utils/config';
+import { restoreManagerCart } from '~/utils/cartHelpers';
 import { useTranslations } from '~/composables/useTranslations';
 
 interface Props {
@@ -427,7 +428,13 @@ function handleCompanyChange(company: Company) {
 }
 
 function handleAfterRequestAuthorization(cart: Cart) {
-  // Manager-cart parking handled in the cart page; here just navigate.
+  // Mirror the checkout/cart-page handlers: if a manager parked their own
+  // cart to act on this request, hand it back; otherwise clear. Without
+  // this the user submits the auth request from the header sidebar, the
+  // package's CartSummary fires this callback, and the stale cart stays
+  // in localStorage — the sidebar keeps showing items that no longer
+  // belong to a live cart.
+  cartStore.setCart(restoreManagerCart());
   router.push(localizeHref(`/authorization-request-sent/${cart.cartId}`, languageStore.language));
 }
 
