@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev",
+    "dev": "nuxt dev --port 5000",
     "locales:build": "node scripts/build-locales-registry.mjs",
     "predev": "node scripts/build-locales-registry.mjs",
     "prebuild": "node scripts/build-locales-registry.mjs",
