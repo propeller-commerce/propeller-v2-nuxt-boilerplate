@@ -23,22 +23,30 @@ import { safeStorage } from '~/utils/ssr';
  * navigation. The full profile lives in `localStorage['user']`; the
  * Bearer token is in `accessToken`.
  */
-export default defineNuxtPlugin(() => {
-  const cart = useCartStore();
-  const company = useCompanyStore();
-  cart.hydrateFromStorage();
-  company.hydrateFromStorage();
+export default defineNuxtPlugin({
+  name: 'hydrate-stores',
+  // Must run AFTER Pinia is installed — otherwise `useCartStore()` below throws
+  // "getActivePinia() was called but there was no active Pinia". Same ordering
+  // contract as `seed-auth.server.ts`; declared via `dependsOn` rather than
+  // `enforce: 'pre'` (which would race Pinia's own installer).
+  dependsOn: ['pinia'],
+  setup() {
+    const cart = useCartStore();
+    const company = useCompanyStore();
+    cart.hydrateFromStorage();
+    company.hydrateFromStorage();
 
-  const auth = useAuthStore();
-  if (!auth.user || !auth.token) {
-    try {
-      const storedUser = safeStorage.getItem('user');
-      const storedToken = safeStorage.getItem('accessToken');
-      if (storedUser && storedToken) {
-        auth.hydrateFromServer(JSON.parse(storedUser), storedToken);
+    const auth = useAuthStore();
+    if (!auth.user || !auth.token) {
+      try {
+        const storedUser = safeStorage.getItem('user');
+        const storedToken = safeStorage.getItem('accessToken');
+        if (storedUser && storedToken) {
+          auth.hydrateFromServer(JSON.parse(storedUser), storedToken);
+        }
+      } catch {
+        /* malformed storage — ignore */
       }
-    } catch {
-      /* malformed storage — ignore */
     }
-  }
+  },
 });
