@@ -233,14 +233,32 @@ const itemsFound = ref(((seededResponse.value as any)?.itemsFound as number | un
 const filtersLoading = ref(false);
 
 const usingServerData = ref(!!seededResponse.value);
-const seededItems = (((seededResponse.value as any)?.items ?? []) as (Product | Cluster)[]);
+// Derive items from productsResponse so they stay in sync when useFetch
+// re-runs (company switch, language switch, term change). A plain `const`
+// snapshot would freeze at the first payload and the grid would never
+// repaint after the user changed their selected company.
+const seededItems = computed<(Product | Cluster)[]>(
+  () => (((productsResponse.value as any)?.items ?? []) as (Product | Cluster)[])
+);
 
 const jsonLdContext = computed(() => buildJsonLdContext({ language: languageStore.language, user: authStore.user }));
-const jsonLdFirstPage = seededItems as Product[];
-const controlledProducts = computed<(Product | Cluster)[] | undefined>(() => (usingServerData.value ? seededItems : undefined));
+const jsonLdFirstPage = computed(() => seededItems.value as Product[]);
+const controlledProducts = computed<(Product | Cluster)[] | undefined>(() => (usingServerData.value ? seededItems.value : undefined));
 function markUserInteracted() {
   if (usingServerData.value) usingServerData.value = false;
 }
+
+// Keep local refs in sync when useFetch re-runs (company switch, language
+// switch, term change). Without this, the initial snapshot sticks and the
+// grid never repaints.
+watch(seededResponse, (next) => {
+  if (!next) return;
+  const nextResponse = next as ProductsResponse | null;
+  productsResponse.value = nextResponse;
+  gridFilters.value = ((nextResponse as any)?.filters as AttributeFilter[] | undefined) ?? [];
+  itemsFound.value = ((nextResponse as any)?.itemsFound as number | undefined) ?? 0;
+  usingServerData.value = !!nextResponse;
+});
 
 const filters = ref<Record<string, string[]>>(listing.value.filters);
 const minPrice = ref<number | undefined>(listing.value.minPrice);

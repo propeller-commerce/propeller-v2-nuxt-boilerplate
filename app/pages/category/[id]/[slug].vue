@@ -228,14 +228,22 @@ const productsResponse = ref<ProductsResponse | null>(seededProducts);
 const gridFilters = ref<AttributeFilter[]>((seededProducts?.filters as AttributeFilter[] | undefined) ?? []);
 
 const usingServerData = ref(!!seededProducts);
-const seededItems = ((seededProducts?.items ?? []) as (Product | Cluster)[]);
+// Seeded items are derived from productsResponse so they stay in sync when
+// useFetch re-runs (company switch, language switch, listing param change).
+// A plain `const` snapshot would freeze at the first payload and the grid
+// would never repaint after the user changed their selected company.
+const seededItems = computed<(Product | Cluster)[]>(
+  () => ((productsResponse.value?.items ?? []) as (Product | Cluster)[])
+);
 
 const jsonLdContext = computed(() =>
   buildJsonLdContext({ language: languageStore.language, user: authStore.user })
 );
-const jsonLdFirstPage = seededItems as Product[];
+// JsonLd schema.org list reflects the current SSR seed (re-computes when the
+// fetch re-fires due to e.g. company switch).
+const jsonLdFirstPage = computed(() => seededItems.value as Product[]);
 const controlledProducts = computed<(Product | Cluster)[] | undefined>(() =>
-  usingServerData.value ? seededItems : undefined
+  usingServerData.value ? seededItems.value : undefined
 );
 function markUserInteracted(): void {
   if (usingServerData.value) usingServerData.value = false;
@@ -245,6 +253,22 @@ const priceBoundsMin = ref<number | undefined>();
 const priceBoundsMax = ref<number | undefined>();
 const itemsFound = ref((seededProducts?.itemsFound as number | undefined) ?? 0);
 const filtersLoading = ref(false);
+
+// Keep local refs in sync when useFetch re-runs (company switch, language
+// switch, listing param change). Without this, the initial snapshot sticks
+// and the grid never repaints after the user changes their selected company,
+// even though the underlying fetch re-fires and seededCategory.value updates.
+watch(seededCategory, (next) => {
+  if (!next) return;
+  category.value = next as Category | null;
+  const nextProducts = ((next as any)?.products as ProductsResponse | undefined) ?? null;
+  productsResponse.value = nextProducts;
+  gridFilters.value = (nextProducts?.filters as AttributeFilter[] | undefined) ?? [];
+  itemsFound.value = (nextProducts?.itemsFound as number | undefined) ?? 0;
+  // Re-arm the SSR seed so the grid shows fresh items immediately instead
+  // of waiting for ProductGrid's own client-side fetch.
+  usingServerData.value = !!nextProducts;
+});
 
 const filters = ref<Record<string, string[]>>(listing.value.filters);
 const minPrice = ref<number | undefined>(listing.value.minPrice);
