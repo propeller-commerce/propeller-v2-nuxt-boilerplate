@@ -1,20 +1,20 @@
 # CI for the propeller-nuxt boilerplate.
 #
 # Unlike propeller-next / propeller-vue, this repo has no GitLab deploy
-# pipeline — its only CI responsibility is to publish a SCRUBBED public mirror
+# pipeline - its only CI responsibility is to publish a SCRUBBED public mirror
 # and cut GitHub Releases. Two stages:
 #
-#   mirror   — one-way, scrubbed mirror of develop/master to the public GitHub
+#   mirror   - one-way, scrubbed mirror of develop/master to the public GitHub
 #              repo. This boilerplate tracks private development files
 #              (CLAUDE.md + the memory/ notes) that must NEVER reach the public
 #              mirror; the job strips them in an ephemeral commit built on the
 #              CI runner and force-pushes THAT to GitHub. GitLab is never pushed
 #              to and remains untouched.
 #
-#   release  — automatic GitHub Release on the mirrored commit, idempotent and
+#   release  - automatic GitHub Release on the mirrored commit, idempotent and
 #              Unreleased-gated, identical contract to the UI packages.
 #
-# Required GitLab CI/CD variables (Settings → CI/CD → Variables), Masked +
+# Required GitLab CI/CD variables (Settings -> CI/CD -> Variables), Masked +
 # Protected:
 #   GITHUB_TOKEN  repo-scoped token for the mirror + release jobs.
 
@@ -38,16 +38,9 @@ mirror_to_github:
     - git config --global user.email "ci@propeller-commerce.com"
     - git config --global user.name "GitLab CI"
     - git remote add github https://${GITHUB_TOKEN}@github.com/propeller-commerce/propeller-v2-nuxt-boilerplate.git || true
-    # GitLab clones shallow; a shallow history + thin pack against the divergent
-    # GitHub mirror causes "remote unpack failed". Unshallow so the full object
-    # graph is local, do NOT fetch the GitHub remote, push a complete pack.
     - git fetch origin --unshallow || git fetch origin || true
-    # ── scrub private paths into an ephemeral commit on the runner only ──
-    # --ignore-unmatch keeps the shared path list safe even where a path is
-    # absent. The scrub commit lives ONLY in the runner checkout; it is pushed
-    # to GitHub and discarded with the runner. GitLab never receives it.
     - git rm -r --cached --ignore-unmatch .claude CLAUDE.md frontend/CLAUDE.md memory Taskfile.yml >/dev/null 2>&1 || true
-    - git commit -m "chore(mirror): strip private dev files for public mirror" --no-verify || echo "nothing to scrub"
+    - 'git commit -m "chore(mirror): strip private dev files for public mirror" --no-verify || echo "nothing to scrub"'
     - git push --no-thin github HEAD:refs/heads/master --force
     - git push --no-thin github --tags --force
   when: on_success
@@ -74,12 +67,12 @@ release_to_github:
     - git remote add github https://${GITHUB_TOKEN}@github.com/propeller-commerce/propeller-v2-nuxt-boilerplate.git || true
     - |
       if git ls-remote --tags github "refs/tags/${TAG}" | grep -q "${TAG}"; then
-        echo "Tag ${TAG} already on GitHub — release already cut, nothing to do.";
+        echo "Tag ${TAG} already on GitHub - release already cut, nothing to do.";
         exit 0;
       fi
     - |
       if grep -Eiq "^##[[:space:]]*\[${VERSION}\][^\n]*unreleased" CHANGELOG.md; then
-        echo "CHANGELOG marks ${VERSION} as Unreleased — skipping release per policy.";
+        echo "CHANGELOG marks ${VERSION} as Unreleased - skipping release per policy.";
         exit 0;
       fi
     - |
