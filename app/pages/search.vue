@@ -161,7 +161,7 @@ import {
   GridToolbar,
   ItemListJsonLd,
   ProductGrid,
-} from 'propeller-v2-vue-ui';
+} from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCartStore } from '~/stores/cart';
 import { useCompanyStore } from '~/stores/company';

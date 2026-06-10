@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ClusterInfo } from 'propeller-v2-vue-ui';
+import { ClusterInfo } from '@propeller-commerce/propeller-v2-vue-ui';
 
 definePageMeta({ ssr: false });
 

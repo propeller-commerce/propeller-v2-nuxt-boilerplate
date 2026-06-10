@@ -110,7 +110,7 @@
 import { ref, computed } from 'vue';
 import { type Address, AddressType, type Company, YesNo } from '@propeller-commerce/propeller-sdk-v2';
 import type { Contact, Customer } from '@propeller-commerce/propeller-sdk-v2';
-import { AddressCard, useAddress, type AddressInput, type AnyUser } from 'propeller-v2-vue-ui';
+import { AddressCard, useAddress, type AddressInput, type AnyUser } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCompanyStore } from '~/stores/company';
 import { COUNTRIES } from '~/utils/countries';

@@ -18,7 +18,7 @@ import {
   type Contact,
   type Customer,
 } from '@propeller-commerce/propeller-sdk-v2';
-import { createServices, toPlain, type Services } from 'propeller-v2-vue-ui/shared';
+import { createServices, toPlain, type Services } from '@propeller-commerce/propeller-v2-vue-ui/shared';
 
 export interface ServerInfra {
   client: GraphQLClient;

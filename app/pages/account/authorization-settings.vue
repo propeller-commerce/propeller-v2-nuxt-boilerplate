@@ -14,7 +14,7 @@
 
 <script setup lang="ts">
 import type { Contact, Customer } from '@propeller-commerce/propeller-sdk-v2';
-import { PurchaseAuthorizationConfigurator } from 'propeller-v2-vue-ui';
+import { PurchaseAuthorizationConfigurator } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCompanyStore } from '~/stores/company';
 import { useTranslations } from '~/composables/useTranslations';

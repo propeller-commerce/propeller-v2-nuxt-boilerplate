@@ -103,7 +103,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
 import type { OrderItem } from '@propeller-commerce/propeller-sdk-v2';
-import { OrderBonusItems, OrderItemCard, OrderSummary, useOrders, type AnyUser } from 'propeller-v2-vue-ui';
+import { OrderBonusItems, OrderItemCard, OrderSummary, useOrders, type AnyUser } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref } from '~/utils/config';

@@ -5,7 +5,7 @@
  * `./config` — same shape both Vue consumers use.
  */
 import type { Contact, Customer, LocalizedString } from '@propeller-commerce/propeller-sdk-v2';
-import { stripHtml, type JsonLdContext } from 'propeller-v2-vue-ui/shared';
+import { stripHtml, type JsonLdContext } from '@propeller-commerce/propeller-v2-vue-ui/shared';
 import { configuration, portalMode, siteUrl } from './config';
 
 /** Pick the value for `language` from a localized array, with a first-entry fallback. */

@@ -1,5 +1,5 @@
 import { GraphQLClient, type GraphQLClientConfig } from '@propeller-commerce/propeller-sdk-v2';
-import { propellerVue, createServices } from 'propeller-v2-vue-ui';
+import { propellerVue, createServices } from '@propeller-commerce/propeller-v2-vue-ui';
 import { configuration } from '~/utils/config';
 
 /**

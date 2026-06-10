@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { FavoriteListDetails, useFavorites, type AnyUser } from 'propeller-v2-vue-ui';
+import { FavoriteListDetails, useFavorites, type AnyUser } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCartStore } from '~/stores/cart';
 import { useTranslations } from '~/composables/useTranslations';

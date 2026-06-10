@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ProductGrid, GridFilters, GridToolbar } from 'propeller-v2-vue-ui';
+import { ProductGrid, GridFilters, GridToolbar } from '@propeller-commerce/propeller-v2-vue-ui';
 
 // CSR comparison shadow — no SSR data fetch, ProductGrid runs its own
 // client-side query via the package's useProductSearch.

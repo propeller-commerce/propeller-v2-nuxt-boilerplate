@@ -65,7 +65,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { type Cart, CrossupsellType } from '@propeller-commerce/propeller-sdk-v2';
-import { ActionCode, CartBonusItems, CartItem, CartSummary } from 'propeller-v2-vue-ui';
+import { ActionCode, CartBonusItems, CartItem, CartSummary } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useCartStore } from '~/stores/cart';
 import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';

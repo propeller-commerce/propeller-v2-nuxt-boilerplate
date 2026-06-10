@@ -28,7 +28,7 @@
 import { computed } from 'vue';
 import { CartService } from '@propeller-commerce/propeller-sdk-v2';
 import type { Cart, Contact, Customer } from '@propeller-commerce/propeller-sdk-v2';
-import { LoginForm, mergeAnonymousCart, useCart, type AnyUser } from 'propeller-v2-vue-ui';
+import { LoginForm, mergeAnonymousCart, useCart, type AnyUser } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCartStore } from '~/stores/cart';
 import { useCompanyStore } from '~/stores/company';

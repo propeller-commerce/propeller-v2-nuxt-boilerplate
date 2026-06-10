@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ProductGrid, GridFilters, GridToolbar } from 'propeller-v2-vue-ui';
+import { ProductGrid, GridFilters, GridToolbar } from '@propeller-commerce/propeller-v2-vue-ui';
 
 definePageMeta({ ssr: false });
 

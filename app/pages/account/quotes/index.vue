@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { OrderList } from 'propeller-v2-vue-ui';
+import { OrderList } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';

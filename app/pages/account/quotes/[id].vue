@@ -117,7 +117,7 @@ import {
   QuoteActions,
   useOrders,
   type AnyUser,
-} from 'propeller-v2-vue-ui';
+} from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref } from '~/utils/config';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ProductInfo } from 'propeller-v2-vue-ui';
+import { ProductInfo } from '@propeller-commerce/propeller-v2-vue-ui';
 
 definePageMeta({ ssr: false });
 

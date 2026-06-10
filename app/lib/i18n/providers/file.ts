@@ -1,5 +1,5 @@
 import { registry } from '~/locales/_registry';
-import type { TranslationProvider } from 'propeller-v2-vue-ui';
+import type { TranslationProvider } from '@propeller-commerce/propeller-v2-vue-ui';
 
 /**
  * Static file-backed translation provider. Reads from the auto-generated
