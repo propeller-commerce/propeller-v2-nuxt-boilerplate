@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { ProductSlider } from 'propeller-v2-vue-ui';
+import { ProductSlider } from '@propeller-commerce/propeller-v2-vue-ui';
 import type { Cart, Cluster, Product } from '@propeller-commerce/propeller-sdk-v2';
 import { useCartStore } from '~/stores/cart';
 import { useLanguageStore } from '~/stores/language';

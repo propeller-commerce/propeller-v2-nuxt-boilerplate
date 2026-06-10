@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { FavoriteLists } from 'propeller-v2-vue-ui';
+import { FavoriteLists } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';

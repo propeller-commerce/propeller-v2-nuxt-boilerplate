@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { ForgotPassword } from 'propeller-v2-vue-ui';
+import { ForgotPassword } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';
 import { useTranslations } from '~/composables/useTranslations';

@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import type { Cart, Contact, Customer } from '@propeller-commerce/propeller-sdk-v2';
-import { PurchaseAuthorizationRequests } from 'propeller-v2-vue-ui';
+import { PurchaseAuthorizationRequests } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCartStore } from '~/stores/cart';
 import { useCompanyStore } from '~/stores/company';

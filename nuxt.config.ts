@@ -15,25 +15,25 @@ export default defineNuxtConfig({
   hooks: {
     // Tailwind v4 + @nuxtjs/tailwindcss v7-beta uses CSS-based @source scanning
     // and only seeds `srcDir` by default. Tell it to also scan the package's
-    // compiled dist so classes used INSIDE propeller-v2-vue-ui components
+    // compiled dist so classes used INSIDE @propeller-commerce/propeller-v2-vue-ui components
     // (grid layouts, responsive variants, etc.) are emitted in the bundle.
     // Without this the package renders with most Tailwind classes missing
     // and the layout collapses.
     'tailwindcss:sources:extend': (sources) => {
       sources.push({
         type: 'path',
-        source: 'D:/laragon/www/propeller-nuxt/node_modules/propeller-v2-vue-ui/dist',
+        source: './node_modules/@propeller-commerce/propeller-v2-vue-ui/dist',
       });
     },
   },
 
-  css: ['propeller-v2-vue-ui/styles.css', '~/assets/css/app.css'],
+  css: ['@propeller-commerce/propeller-v2-vue-ui/styles.css', '~/assets/css/app.css'],
 
   // The package ships untranspiled .vue/SFC ESM in dist; Nuxt's server build
   // needs Vite's vue plugin to process it. Same posture as propeller-vue
   // (build.transpile feeds the SSR/Vite pipeline for both runtimes).
   build: {
-    transpile: ['propeller-v2-vue-ui', '@propeller-commerce/propeller-sdk-v2'],
+    transpile: ['@propeller-commerce/propeller-v2-vue-ui', '@propeller-commerce/propeller-sdk-v2'],
   },
 
   runtimeConfig: {

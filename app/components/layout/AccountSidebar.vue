@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { AccountIconAndMenu } from 'propeller-v2-vue-ui';
+import { AccountIconAndMenu } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCompanyStore } from '~/stores/company';
 import { useLanguageStore } from '~/stores/language';

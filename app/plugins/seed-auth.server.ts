@@ -1,6 +1,6 @@
 import { GraphQLClient } from '@propeller-commerce/propeller-sdk-v2';
 import type { Contact, Customer } from '@propeller-commerce/propeller-sdk-v2';
-import { createServices, toPlain } from 'propeller-v2-vue-ui/shared';
+import { createServices, toPlain } from '@propeller-commerce/propeller-v2-vue-ui/shared';
 import { useAuthStore } from '~/stores/auth';
 
 /**

@@ -26,7 +26,7 @@ import {
   SortOrder,
   ProductSearchableField,
 } from '@propeller-commerce/propeller-sdk-v2';
-import { toPlain, type MenuCategory } from 'propeller-v2-vue-ui/shared';
+import { toPlain, type MenuCategory } from '@propeller-commerce/propeller-v2-vue-ui/shared';
 import {
   imageSearchFilters,
   imageSearchFiltersGrid,

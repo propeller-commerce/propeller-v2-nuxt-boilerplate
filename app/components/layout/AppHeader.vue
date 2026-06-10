@@ -260,7 +260,7 @@ import { ref, computed, watch } from 'vue';
 import { Menu as MenuIcon, ChevronDown, Check, Globe } from 'lucide-vue-next';
 import { PurchaseRole } from '@propeller-commerce/propeller-sdk-v2';
 import type { Cart, Category, Company, Contact, Customer } from '@propeller-commerce/propeller-sdk-v2';
-import type { MenuCategory } from 'propeller-v2-vue-ui/shared';
+import type { MenuCategory } from '@propeller-commerce/propeller-v2-vue-ui/shared';
 import {
   AccountIconAndMenu,
   CartIconAndSidebar,
@@ -268,7 +268,7 @@ import {
   Menu as PropellerMenu,
   PriceToggle,
   SearchBar,
-} from 'propeller-v2-vue-ui';
+} from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCartStore } from '~/stores/cart';
 import { useCompanyStore } from '~/stores/company';

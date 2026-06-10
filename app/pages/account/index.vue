@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { UserDetails } from 'propeller-v2-vue-ui';
+import { UserDetails } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCompanyStore } from '~/stores/company';
 import { COUNTRIES } from '~/utils/countries';

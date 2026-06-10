@@ -156,8 +156,8 @@ import {
   ProductSlider,
   ProductTabs,
   getLanguageString,
-} from 'propeller-v2-vue-ui';
-import { stripHtml } from 'propeller-v2-vue-ui/shared';
+} from '@propeller-commerce/propeller-v2-vue-ui';
+import { stripHtml } from '@propeller-commerce/propeller-v2-vue-ui/shared';
 import { useAuthStore } from '~/stores/auth';
 import { useCartStore } from '~/stores/cart';
 import { useCompanyStore } from '~/stores/company';

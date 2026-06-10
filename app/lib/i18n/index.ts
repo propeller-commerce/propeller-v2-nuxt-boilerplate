@@ -1,5 +1,5 @@
 import { createFileProvider } from './providers/file';
-import type { TranslationProvider } from 'propeller-v2-vue-ui';
+import type { TranslationProvider } from '@propeller-commerce/propeller-v2-vue-ui';
 
 let _provider: TranslationProvider | null = null;
 

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { MenuCategory } from 'propeller-v2-vue-ui/shared';
+import type { MenuCategory } from '@propeller-commerce/propeller-v2-vue-ui/shared';
 
 /**
  * Menu tree store — seeded server-side by the default layout's
