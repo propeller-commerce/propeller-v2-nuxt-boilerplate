@@ -26,17 +26,23 @@ import { safeStorage } from '~/utils/ssr';
 export default defineNuxtPlugin({
   name: 'hydrate-stores',
   // Must run AFTER Pinia is installed — otherwise `useCartStore()` below throws
-  // "getActivePinia() was called but there was no active Pinia". Same ordering
-  // contract as `seed-auth.server.ts`; declared via `dependsOn` rather than
-  // `enforce: 'pre'` (which would race Pinia's own installer).
+  // "getActivePinia() was called but there was no active Pinia". `dependsOn`
+  // alone proved unreliable here (the client plugin still ordered ahead of
+  // @pinia/nuxt's plugin on a cold dev start, surfacing a 500 + hydration
+  // mismatch). Belt-and-braces: keep `dependsOn` AND resolve every store
+  // against the app's Pinia instance explicitly via `useXxxStore(usePinia())`,
+  // exactly like `middleware/language.global.ts`. Passing the instance binds
+  // the store regardless of plugin ordering, sidestepping active-instance
+  // timing entirely. `usePinia` is an auto-import from @pinia/nuxt.
   dependsOn: ['pinia'],
   setup() {
-    const cart = useCartStore();
-    const company = useCompanyStore();
+    const pinia = usePinia();
+    const cart = useCartStore(pinia);
+    const company = useCompanyStore(pinia);
     cart.hydrateFromStorage();
     company.hydrateFromStorage();
 
-    const auth = useAuthStore();
+    const auth = useAuthStore(pinia);
     if (!auth.user || !auth.token) {
       try {
         const storedUser = safeStorage.getItem('user');
