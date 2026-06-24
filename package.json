@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@propeller-commerce/propeller-sdk-v2": "^0.11.1",
-    "@propeller-commerce/propeller-v2-vue-ui": "^0.3.14",
+    "@propeller-commerce/propeller-v2-vue-ui": "^0.3.21",
     "@pinia/nuxt": "^0.6.0",
     "@nuxtjs/i18n": "^9.5.0",
     "@vueuse/core": "^14.2.1",
