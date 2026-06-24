@@ -23,8 +23,10 @@ import { useAuthStore } from '~/stores/auth';
  * Plugin ordering: this MUST run AFTER `@pinia/nuxt` installs Pinia onto
  * the app, otherwise `useAuthStore()` throws "getActivePinia() was called
  * with no active Pinia" and the SSR pass dies with an unhandled rejection.
- * `dependsOn: ['pinia']` pins the order declaratively. Do NOT add
- * `enforce: 'pre'` — that races against Pinia's installer.
+ * `dependsOn: ['pinia']` pins the order declaratively AND the store is
+ * resolved against `usePinia()` explicitly (see `hydrate-stores.client.ts`)
+ * so ordering slips can't resurface the crash. Do NOT add `enforce: 'pre'`
+ * — that races against Pinia's installer.
  *
  * Note: inlines the GraphQLClient construction instead of importing from
  * `~~/server/utils/infra.ts`. That file pulls `nitropack/runtime` aliases
@@ -55,7 +57,7 @@ export default defineNuxtPlugin({
       const viewer = await services.user.getViewer({});
       if (!viewer) return;
       const plain = toPlain(viewer) as Contact | Customer;
-      const auth = useAuthStore();
+      const auth = useAuthStore(usePinia());
       auth.hydrateFromServer(plain, token);
     } catch (e) {
       console.error('[seed-auth] failed to resolve viewer:', e);
