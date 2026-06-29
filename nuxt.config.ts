@@ -130,6 +130,25 @@ export default defineNuxtConfig({
         '#app-manifest': new URL('./app/stubs/app-manifest.mjs', import.meta.url).pathname,
       },
     },
+    // Vite enforces a Host-header allowlist on its dev server. A public dev
+    // tunnel (cloudflared / ngrok) sends its own hostname, which Vite rejects
+    // with "This host (...) is not allowed" — and Mollie needs a public tunnel
+    // to reach the /api/mollie/webhook in dev. Allow the common tunnel
+    // providers' wildcard subdomains, plus anything in DEV_ALLOWED_HOSTS
+    // (comma-separated) for other tunnels. `vite.server` only affects the dev
+    // server — never the production build / Nitro output.
+    server: {
+      allowedHosts: [
+        '.trycloudflare.com',
+        '.ngrok-free.app',
+        '.ngrok.io',
+        '.loca.lt',
+        ...(process.env.DEV_ALLOWED_HOSTS || '')
+          .split(',')
+          .map((h) => h.trim())
+          .filter(Boolean),
+      ],
+    },
   },
 
   app: {
