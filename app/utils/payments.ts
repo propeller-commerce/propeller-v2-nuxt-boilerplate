@@ -8,23 +8,33 @@
  * order starts as UNFINISHED and the webhook later promotes it based on the
  * Mollie payment state.
  *
- * Configured via `NUXT_PUBLIC_ON_ACCOUNT_PAYMENTS` (comma-separated,
- * case-insensitive). Defaults to `REKENING,ON_ACCOUNT` when unset. The checkout
- * page imports this to decide the placement order status + whether to start a
- * Mollie payment.
+ * ── IMPORTANT (Nuxt env gotcha) ──────────────────────────────────────────────
+ * Unlike Vite's `import.meta.env.VITE_*` (Vue) — which is statically inlined
+ * into the client bundle — Nuxt does NOT inline `process.env.NUXT_PUBLIC_*` into
+ * the browser bundle. There `process.env` is an empty shim, so a `process.env.
+ * NUXT_PUBLIC_*` read evaluates to `undefined` at runtime and every value falls
+ * back to its default. Public runtime config must be read via
+ * `useRuntimeConfig().public.*` instead. These helpers therefore take the
+ * resolved public-config object from the caller (which is in Nuxt app context)
+ * rather than reading the env themselves.
  *
- * Env access is via `process.env.NUXT_PUBLIC_*` (Nuxt inlines these into both
- * the server and client bundles) — the same convention `app/utils/config.ts`
- * uses, mirroring the Vue consumer's `import.meta.env.VITE_*`. The server route
- * applies the same rule against the server-only `ON_ACCOUNT_PAYMENTS` (via
- * `server/utils/mollie.ts`) as a defense-in-depth guard; keep the two in sync.
+ * The server route applies the same on-account rule against the server-only
+ * `ON_ACCOUNT_PAYMENTS` (via `server/utils/mollie.ts`, which reads
+ * `useRuntimeConfig(event)` correctly) as a defense-in-depth guard; keep the
+ * two in sync.
  */
 
 const DEFAULT_ON_ACCOUNT = ['REKENING', 'ON_ACCOUNT'];
 
+/** The shape of `useRuntimeConfig().public` this module reads. */
+export interface PaymentsPublicConfig {
+  paymentProvider?: string;
+  onAccountPayments?: string;
+}
+
 /** Parse the configured on-account method codes, upper-cased and trimmed. */
-export function onAccountMethods(): string[] {
-  const raw = process.env.NUXT_PUBLIC_ON_ACCOUNT_PAYMENTS || '';
+export function onAccountMethods(pub: PaymentsPublicConfig): string[] {
+  const raw = pub.onAccountPayments || '';
   const list = raw
     .split(',')
     .map((s) => s.trim().toUpperCase())
@@ -38,12 +48,12 @@ export function onAccountMethods(): string[] {
  * NEW; PSP → UNFINISHED until the webhook resolves it) and whether to start a
  * Mollie payment at all.
  */
-export function isOnAccountMethod(method: string | undefined | null): boolean {
+export function isOnAccountMethod(pub: PaymentsPublicConfig, method: string | undefined | null): boolean {
   if (!method) return false;
-  return onAccountMethods().includes(method.trim().toUpperCase());
+  return onAccountMethods(pub).includes(method.trim().toUpperCase());
 }
 
-/** Whether Mollie is the active payment provider, per the client env mirror. */
-export function isMollieEnabled(): boolean {
-  return (process.env.NUXT_PUBLIC_PAYMENT_PROVIDER || '').trim().toLowerCase() === 'mollie';
+/** Whether Mollie is the active payment provider, per the public runtime config. */
+export function isMollieEnabled(pub: PaymentsPublicConfig): boolean {
+  return (pub.paymentProvider || '').trim().toLowerCase() === 'mollie';
 }

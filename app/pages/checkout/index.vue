@@ -347,7 +347,15 @@ const orderPlaced = ref(false);
 // the order stays UNFINISHED and the cart is kept, so the shopper can retry.
 const paymentStartError = ref('');
 
-const { siteUrl } = useRuntimeConfig().public as { siteUrl?: string; currencyCode?: string };
+// Public runtime config. Read via useRuntimeConfig().public — NOT
+// process.env.NUXT_PUBLIC_* (Nuxt doesn't inline that into the client bundle,
+// so it's undefined in the browser; see app/utils/payments.ts).
+const publicConfig = useRuntimeConfig().public as {
+  siteUrl?: string;
+  currencyCode?: string;
+  paymentProvider?: string;
+  onAccountPayments?: string;
+};
 
 let lastInitCart: any = null;
 
@@ -494,10 +502,10 @@ async function handlePlaceOrder(reference?: string, notes?: string) {
   paymentStartError.value = '';
 
   const quote = isQuoteMode.value;
-  const onAccount = isOnAccountMethod(selectedPayment.value);
+  const onAccount = isOnAccountMethod(publicConfig, selectedPayment.value);
   // PSP path only when Mollie is on, it's a real sale, and the method isn't
   // settled on account.
-  const goesThroughMollie = !quote && !onAccount && isMollieEnabled();
+  const goesThroughMollie = !quote && !onAccount && isMollieEnabled(publicConfig);
 
   // quote → REQUEST · via Mollie → UNFINISHED (the webhook finalizes it on
   // `paid`) · everything else → NEW (settled immediately, no PSP).
@@ -558,7 +566,7 @@ async function startMolliePayment(orderId: number): Promise<string | null> {
     const amount = total?.totalGross ?? total?.totalNet;
     if (amount === undefined || amount === null) return null;
 
-    const origin = (siteUrl || window.location.origin).replace(/\/$/, '');
+    const origin = (publicConfig.siteUrl || window.location.origin).replace(/\/$/, '');
     // `psp=mollie` marks this as a PSP return so the thank-you page resolves the
     // real payment outcome instead of assuming success.
     const redirectUrl =
@@ -572,7 +580,7 @@ async function startMolliePayment(orderId: number): Promise<string | null> {
       body: JSON.stringify({
         orderId,
         amount,
-        currency: process.env.NUXT_PUBLIC_CURRENCY_CODE || 'EUR',
+        currency: publicConfig.currencyCode || 'EUR',
         method: selectedPayment.value,
         description: `Order ${orderId}`,
         redirectUrl,
