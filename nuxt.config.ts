@@ -48,6 +48,21 @@ export default defineNuxtConfig({
     baseCategoryId: process.env.BASE_CATEGORY_ID || '17',
     channelId: process.env.CHANNEL_ID || '1',
 
+    // ── Payments (Mollie PSP) — server-only ─────────────────────────────────
+    // The Mollie keys + webhook config never reach the client. The three
+    // /api/mollie/* Nitro routes read these via useRuntimeConfig(event). The
+    // client-visible toggles (provider on/off, on-account method codes) live
+    // under `public` below. Mirrors propeller-vue's server/client env split.
+    paymentProvider: process.env.PAYMENT_PROVIDER || '',
+    mollieLiveKey: process.env.MOLLIE_LIVE_KEY || '',
+    mollieTestKey: process.env.MOLLIE_TEST_KEY || '',
+    mollieTestMode: process.env.MOLLIE_TEST_MODE || 'true',
+    // Explicit webhook URL override (point at a tunnel in dev). When empty the
+    // webhook URL is derived from NUXT_PUBLIC_SITE_URL + /api/mollie/webhook.
+    mollieWebhookUrl: process.env.MOLLIE_WEBHOOK_URL || '',
+    // Comma-separated method codes that settle "on account" (no PSP).
+    onAccountPayments: process.env.ON_ACCOUNT_PAYMENTS || '',
+
     public: {
       // The client talks to /api/graphql by default (proxy injects apikey
       // server-side). Override to point at the upstream endpoint directly
@@ -67,6 +82,15 @@ export default defineNuxtConfig({
       footerDescription: process.env.NUXT_PUBLIC_FOOTER_DESCRIPTION || '',
       footerEmail: process.env.NUXT_PUBLIC_FOOTER_EMAIL || 'info@propeller.com',
       footerPhone: process.env.NUXT_PUBLIC_FOOTER_PHONE || '+31 (0) 20 000 0000',
+
+      // ── Payments (Mollie PSP) — client-visible toggles ────────────────────
+      // The checkout view uses these to decide the placement order status and
+      // whether to start a Mollie payment. NOT the secret keys (those stay
+      // server-only above). Mirrors propeller-vue's VITE_PAYMENT_PROVIDER /
+      // VITE_ON_ACCOUNT_PAYMENTS. The server route re-applies the on-account
+      // rule against the server-only `onAccountPayments` as defense in depth.
+      paymentProvider: process.env.NUXT_PUBLIC_PAYMENT_PROVIDER || '',
+      onAccountPayments: process.env.NUXT_PUBLIC_ON_ACCOUNT_PAYMENTS || '',
     },
   },
 
