@@ -219,6 +219,18 @@ const SUCCESS_MOLLIE_STATUSES = new Set(['paid', 'authorized']);
 const PENDING_MOLLIE_STATUSES = new Set(['open', 'pending']);
 const FAILED_MOLLIE_STATUSES = new Set(['failed', 'canceled', 'cancelled', 'expired']);
 
+// Mollie redirects the shopper back the instant they finish the hosted
+// checkout, but it flips the payment to `paid` and fires the webhook a beat
+// later (async). So the first status check on return very often still reads
+// `open` even though the payment succeeds seconds later — stranding the shopper
+// on the "payment still open" screen. Auto-poll a bounded number of times
+// before settling on the pending UI: this resolves the common redirect⇄webhook
+// race without an unbounded loop. `failed`/`canceled`/`expired` resolve
+// immediately (no poll); genuinely slow methods fall through to the pending
+// screen with its manual "Check payment status" button intact.
+const PENDING_POLL_ATTEMPTS = 5; // total status checks before showing pending
+const PENDING_POLL_INTERVAL_MS = 2000; // ~8s of polling across the 5 attempts
+
 type PaymentState = 'none' | 'resolving' | 'success' | 'pending' | 'failed';
 
 interface MollieStatusResponse {
@@ -256,23 +268,38 @@ function dropStash() {
   }
 }
 
-/** Map a live Mollie status string to a return-page state. */
-function applyMollieStatus(data: MollieStatusResponse) {
+/**
+ * Map a live Mollie status to a return-page state and apply it. Returns whether
+ * the status is TERMINAL (success/failed → stop polling) or not (open/pending/
+ * unknown → keep polling). The pending/unknown branches set `paymentState` to
+ * `'pending'` so a caller that has exhausted its attempts lands on the right UI.
+ */
+function applyMollieStatus(data: MollieStatusResponse): { terminal: boolean } {
   const status = (data.status || '').toLowerCase();
   mollieStatus.value = status || null;
   if (data.ok && SUCCESS_MOLLIE_STATUSES.has(status)) {
     paymentState.value = 'success'; // → cart-clear watcher fires
     dropStash();
-  } else if (data.ok && PENDING_MOLLIE_STATUSES.has(status)) {
-    paymentState.value = 'pending'; // keep cart
-  } else if (FAILED_MOLLIE_STATUSES.has(status)) {
-    paymentState.value = 'failed'; // keep cart
-  } else {
-    paymentState.value = 'pending'; // unknown → keep cart (safer)
+    return { terminal: true };
   }
+  if (FAILED_MOLLIE_STATUSES.has(status)) {
+    paymentState.value = 'failed'; // keep cart
+    return { terminal: true };
+  }
+  // open / pending / unknown → not resolved yet; keep cart, keep polling.
+  paymentState.value = 'pending';
+  return { terminal: false };
 }
 
-/** Resolve the PSP outcome on first load after returning from Mollie. */
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Resolve the PSP outcome on return from Mollie, polling a bounded number of
+ * times while still open/pending to absorb the redirect⇄webhook race (see
+ * PENDING_POLL_* above). Stays in `resolving` (spinner) during the retries so
+ * the shopper doesn't see a premature "open" flash; settles on `pending` once
+ * attempts are exhausted (the manual re-check button remains).
+ */
 async function resolvePspReturn() {
   paymentState.value = 'resolving';
   const paymentId = readStash();
@@ -290,12 +317,23 @@ async function resolvePspReturn() {
     return;
   }
 
-  try {
-    const res = await fetch(`/api/mollie/payment-status?paymentId=${encodeURIComponent(paymentId)}`);
-    const data = (await res.json()) as MollieStatusResponse;
-    applyMollieStatus(data);
-  } catch {
-    paymentState.value = 'pending'; // network error → keep cart, let them retry
+  for (let attempt = 1; attempt <= PENDING_POLL_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`/api/mollie/payment-status?paymentId=${encodeURIComponent(paymentId)}`);
+      const data = (await res.json()) as MollieStatusResponse;
+      const { terminal } = applyMollieStatus(data);
+      if (terminal) return;
+    } catch {
+      // network error → treat as not-yet-resolved; keep cart, keep polling.
+      paymentState.value = 'pending';
+    }
+    if (attempt < PENDING_POLL_ATTEMPTS) {
+      // Stay in the resolving spinner between attempts, not the pending screen.
+      paymentState.value = 'resolving';
+      await sleep(PENDING_POLL_INTERVAL_MS);
+    } else {
+      paymentState.value = 'pending'; // exhausted → settle on pending
+    }
   }
 }
 
