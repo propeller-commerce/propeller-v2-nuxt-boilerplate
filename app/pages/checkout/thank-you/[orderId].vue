@@ -378,6 +378,28 @@ const {
   configuration,
 });
 
+// Authoritative override: a PAID/AUTHORIZED backend order means the webhook
+// already confirmed AND finalized the payment — that's the source of truth,
+// regardless of what the (async, occasionally lagging) live Mollie poll
+// returned. Promote to success so a confirmed-paid order can never strand the
+// shopper on the "payment still open" screen. Only upgrades toward success.
+watch(
+  order,
+  (o) => {
+    if (!isPspReturn.value || !o) return;
+    const orderStatus = (
+      (o as any).paymentData?.status ||
+      (o as any).status ||
+      ''
+    ).toUpperCase();
+    if (orderStatus === 'PAID' || orderStatus === 'AUTHORIZED') {
+      paymentState.value = 'success'; // → cart-clear watcher fires
+      dropStash();
+    }
+  },
+  { immediate: true },
+);
+
 const parentItems = computed<OrderItem[]>(() => {
   const all: OrderItem[] = order.value?.items?.filter((i: OrderItem) => i.class === 'product' && i.isBonus === 'N') || [];
   return all.filter((i) => !i.parentOrderItemId);
