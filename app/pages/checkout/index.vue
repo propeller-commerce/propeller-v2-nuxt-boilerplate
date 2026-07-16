@@ -343,6 +343,13 @@ const step3Submitted = ref(false);
 const quoteReference = ref('');
 const quoteNotes = ref('');
 const orderPlaced = ref(false);
+// Idempotency guard for the PSP retry path: placeOrder converts the cart to an
+// order server-side, and a payment-start failure keeps the cart for retry.
+// Without this, a second Place Order click re-runs placeOrder on the SAME cart
+// and (if the backend isn't idempotent) strands another UNFINISHED order. We
+// remember the orderId this cart already produced and, on retry, skip straight
+// to starting payment for that same order.
+const placedOrder = ref<{ cartId: string; orderId: number } | null>(null);
 // Surfaced when starting the Mollie payment fails after the order was placed —
 // the order stays UNFINISHED and the cart is kept, so the shopper can retry.
 const paymentStartError = ref('');
@@ -511,15 +518,28 @@ async function handlePlaceOrder(reference?: string, notes?: string) {
   // `paid`) · everything else → NEW (settled immediately, no PSP).
   const orderStatus = quote ? 'REQUEST' : goesThroughMollie ? 'UNFINISHED' : 'NEW';
 
-  const result = await placeOrder((cart.value as any).cartId, {
-    isQuoteMode: quote,
-    reference,
-    notes,
-    orderStatus,
-    // A Mollie order is finalized later by the payment webhook (on paid): don't
-    // send the confirmation email / clear the backend cart at placement.
-    ...(goesThroughMollie ? { finalizeOrder: false } : {}),
-  });
+  const cartId = (cart.value as any).cartId;
+
+  // Retry after a payment-start failure: this cart was already converted to an
+  // order by a prior placeOrder. Reuse that orderId and re-run only the Mollie
+  // hand-off instead of placing the order again (which would strand a duplicate
+  // UNFINISHED order on a non-idempotent backend).
+  const alreadyPlaced =
+    goesThroughMollie && placedOrder.value?.cartId === cartId
+      ? placedOrder.value.orderId
+      : null;
+
+  const result = alreadyPlaced
+    ? ({ ok: true as const, data: { orderId: alreadyPlaced } })
+    : await placeOrder(cartId, {
+        isQuoteMode: quote,
+        reference,
+        notes,
+        orderStatus,
+        // A Mollie order is finalized later by the payment webhook (on paid): don't
+        // send the confirmation email / clear the backend cart at placement.
+        ...(goesThroughMollie ? { finalizeOrder: false } : {}),
+      });
 
   if (!result.ok) {
     orderPlaced.value = false;
@@ -527,6 +547,9 @@ async function handlePlaceOrder(reference?: string, notes?: string) {
   }
 
   const orderId = result.data.orderId;
+  // Remember the order this cart produced so a payment-start retry reuses it.
+  // Only PSP orders keep the cart around to retry against.
+  if (goesThroughMollie) placedOrder.value = { cartId, orderId };
 
   // PSP step: hand off to Mollie's hosted checkout.
   if (goesThroughMollie) {
