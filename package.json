@@ -18,8 +18,8 @@
   "dependencies": {
     "@nuxtjs/i18n": "^9.5.0",
     "@pinia/nuxt": "^0.6.0",
-    "@propeller-commerce/propeller-sdk-v2": "^0.12.1",
-    "@propeller-commerce/propeller-v2-mollie": "^0.2.3",
+    "@propeller-commerce/propeller-sdk-v2": "^0.13.0",
+    "@propeller-commerce/propeller-v2-mollie": "^0.2.4",
     "@propeller-commerce/propeller-v2-vue-ui": "^0.3.31",
     "@vueuse/core": "^14.2.1",
     "class-variance-authority": "^0.7.1",
