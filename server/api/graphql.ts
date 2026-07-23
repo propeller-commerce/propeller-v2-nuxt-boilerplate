@@ -96,7 +96,15 @@ export default defineEventHandler(async (event) => {
   }
   const operationName = extractOperationName(parsed);
 
-  const auth = getHeader(event, 'authorization');
+  // Resolve the caller's session. The browser SDK runs in proxy mode and does
+  // NOT attach a Bearer header on reloads (the in-memory token from login is
+  // lost), but the httpOnly `access_token` cookie rides along on every
+  // same-origin request. Read it and forward it as the Bearer so authenticated
+  // operations resolve under the USER's session instead of the apikey's default
+  // account (which surfaced as "viewer returns 1 company, not 3"). An explicit
+  // Authorization header still wins. Mirrors propeller-next's /api/graphql route.
+  const cookieToken = getCookie(event, 'access_token');
+  const auth = getHeader(event, 'authorization') ?? (cookieToken ? `Bearer ${cookieToken}` : undefined);
   const isAnonymous = !auth;
   const clientId = getHeader(event, 'x-client-id') ?? '';
   const orderEditorOptIn = clientId === ORDER_EDITOR_CLIENT_ID;

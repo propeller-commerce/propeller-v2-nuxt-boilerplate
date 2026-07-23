@@ -2,6 +2,7 @@ import { GraphQLClient } from '@propeller-commerce/propeller-sdk-v2';
 import type { Contact, Customer } from '@propeller-commerce/propeller-sdk-v2';
 import { createServices, toPlain } from '@propeller-commerce/propeller-v2-vue-ui/shared';
 import { useAuthStore } from '~/stores/auth';
+import { configuration } from '~/utils/config';
 
 /**
  * SSR-only — seed the auth store from the `access_token` cookie BEFORE
@@ -54,7 +55,15 @@ export default defineNuxtPlugin({
         headers: { Authorization: `Bearer ${token}` },
       });
       const services = createServices(client);
-      const viewer = await services.user.getViewer({});
+      // Request the tracked company/customer attributes so the seeded (and
+      // hydrated-to-client) user carries MY_INSTALLATIONS for the machines root.
+      // Mirrors propeller-next's AuthContext.refreshUser viewer inputs.
+      const viewer = await services.user.getViewer({
+        companyAttributesInput: { attributeDescription: { names: configuration.companyTrackAttributes } },
+        customerAttributesInput: { attributeDescription: { names: configuration.customerTrackAttributes } },
+        contactPAConfigInput: configuration.contactPAConfigInput,
+        contactCompaniesSearchInput: configuration.contactCompaniesSearchInput,
+      });
       if (!viewer) return;
       const plain = toPlain(viewer) as Contact | Customer;
       const auth = useAuthStore(usePinia());

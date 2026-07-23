@@ -268,6 +268,8 @@ import {
   Menu as PropellerMenu,
   PriceToggle,
   SearchBar,
+  useCart,
+  type AnyUser,
 } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useCartStore } from '~/stores/cart';
@@ -292,6 +294,17 @@ const cartStore = useCartStore();
 const companyStore = useCompanyStore();
 const priceStore = usePriceStore();
 const languageStore = useLanguageStore();
+
+// Company-scoped cart re-fetch, used by handleCompanyChange. Mirrors the
+// useCart wiring in login.vue / register.vue and propeller-vue's AppHeader.
+const { $graphqlClient } = useNuxtApp();
+const { fetchActiveCart } = useCart({
+  graphqlClient: $graphqlClient as any,
+  user: computed(() => authStore.user as AnyUser),
+  companyId: computed(() => companyStore.selectedCompany?.companyId ?? undefined),
+  language: computed(() => languageStore.language),
+  configuration,
+});
 
 const menuTreeProp = computed<MenuCategory[] | undefined>(() =>
   props.menuTree.length ? props.menuTree : undefined
@@ -352,11 +365,21 @@ const showAccount = ref(true);
 const showCart = ref(true);
 const showCategoriesMenu = ref(true);
 const categoriesMenuLabel = ref('Browse Categories');
-const navLinks = ref([
-  { label: 'Blog', url: '/blog', highlight: false },
-  { label: 'New Arrivals', url: '/new-arrivals', highlight: false },
-  { label: 'Sale', url: '/sale', highlight: true },
-]);
+// Contact-only: the machines section reads the contact's MY_INSTALLATIONS, so
+// the nav entry only appears for a logged-in contact. Mirrors propeller-next's
+// Header `isContact` gate.
+const isContact = computed(() => !!(authStore.user && 'contactId' in authStore.user));
+const navLinks = computed(() => {
+  const links = [
+    { label: 'Blog', url: '/blog', highlight: false },
+    { label: 'New Arrivals', url: '/new-arrivals', highlight: false },
+    { label: 'Sale', url: '/sale', highlight: true },
+  ];
+  if (isContact.value) {
+    links.unshift({ label: 'Machines', url: '/machines', highlight: false });
+  }
+  return links;
+});
 
 const siteName = (runtimeConfig.public.siteName as string | undefined) || 'Propeller Shop';
 const logoSrc = (runtimeConfig.public.logoUrl as string | undefined) || '';
@@ -419,12 +442,20 @@ async function handleAfterLogin(
   router.push(localizeHref('/account', languageStore.language));
 }
 
-function handleCompanyChange(company: Company) {
+async function handleCompanyChange(company: Company) {
   // Setting the company writes the cookie + bumps the reactive companyId.
   // The catalog pages' useFetch watchers pick that up and re-fetch on
   // their own — no refreshNuxtData() here (it would race the watcher and
   // cancel the in-flight request).
   companyStore.setSelectedCompany(company);
+  // The cart is company-scoped: re-fetch the new company's active cart so the
+  // sidebar and `cartStore.cartId` track the switch. Without this, cartId stays
+  // stale/empty after switching and the next add-to-cart — e.g. a spare part on
+  // /machines — has no cart to attach to. Mirrors propeller-vue's AppHeader.
+  if (authStore.user) {
+    const newCart = await fetchActiveCart();
+    cartStore.setCart(newCart ?? null);
+  }
 }
 
 function handleAfterRequestAuthorization(cart: Cart) {

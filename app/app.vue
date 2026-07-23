@@ -14,6 +14,23 @@ const language = useLanguageStore();
 const price = usePriceStore();
 const config = useRuntimeConfig();
 
+// Only expose a company the signed-in contact actually belongs to. A stale
+// `selected_company` left in localStorage by a previously logged-in identity
+// would otherwise be sent as companyId before the company store reconciles it —
+// and PricingV2 rejects it ("Provided companyId N does not match the contact's
+// companies"), erroring the first catalog/parts fetch. Mirrors propeller-next's
+// PropellerHostBridge companyId guard.
+const validatedCompanyId = computed<number | undefined>(() => {
+  const selId = company.companyId ?? undefined;
+  const u = auth.user as
+    | { company?: { companyId?: number }; companies?: { items?: { companyId?: number }[] } }
+    | null;
+  if (!u) return selId;
+  const candidates = [...(u.companies?.items ?? []), ...(u.company ? [u.company] : [])];
+  if (selId != null && candidates.some((c) => c?.companyId === selId)) return selId;
+  return u.company?.companyId ?? undefined;
+});
+
 // Tier-2 scope (companyId / includeTax) flows through useFetch query
 // params on the catalog pages, so each page's own watcher re-fetches with
 // the new scope. We deliberately don't call refreshNuxtData() here —
@@ -24,7 +41,7 @@ const config = useRuntimeConfig();
 <template>
   <PropellerProvider
     :user="auth.user ?? null"
-    :company-id="company.companyId ?? undefined"
+    :company-id="validatedCompanyId"
     :language="language.language"
     :include-tax="price.includeTax"
     :portal-mode="config.public.portalMode"

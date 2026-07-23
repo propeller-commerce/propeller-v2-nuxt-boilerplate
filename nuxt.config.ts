@@ -76,6 +76,12 @@ export default defineNuxtConfig({
       channelId: process.env.CHANNEL_ID || '1',
       urlPattern: process.env.NUXT_PUBLIC_URL_PATTERN || 'page/id/slug',
       menuDepth: process.env.NUXT_PUBLIC_MENU_DEPTH || '3',
+      // Machines / spare parts. Read on the client via useRuntimeConfig().public
+      // — the machine pages are CSR and process.env.NUXT_PUBLIC_* is undefined in
+      // the browser bundle, so the source/language must live here (not the
+      // process.env reads in app/utils/config.ts). `source` empty = disabled.
+      machineSource: process.env.NUXT_PUBLIC_MACHINE_SOURCE || process.env.BOILERPLATE_MACHINE_SOURCE || '',
+      machineLanguage: process.env.NUXT_PUBLIC_MACHINE_LANGUAGE || process.env.BOILERPLATE_MACHINE_LANGUAGE || 'EN',
       siteName: process.env.NUXT_PUBLIC_SITE_NAME || 'Propeller Shop',
       logoUrl: process.env.NUXT_PUBLIC_LOGO_URL || '/propeller_logo.webp',
       logoAlt: process.env.NUXT_PUBLIC_LOGO_ALT || 'Propeller',

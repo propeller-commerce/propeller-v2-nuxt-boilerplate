@@ -84,7 +84,15 @@ async function cachedGetViewer(event: H3Event, services: Services): Promise<Cont
   if (ctx.viewer) return ctx.viewer;
   ctx.viewer = (async () => {
     try {
-      const viewer = await services.user.getViewer({});
+      // Paginate the viewer's companies + purchase-auth configs so the
+      // SSR-rendered user matches the client (see app/utils/config.ts
+      // contactPAConfigInput / contactCompaniesSearchInput — inlined here
+      // because this Nitro-only util can't import the app-dir config). Machine
+      // attributes stay CSR (no companyAttributesInput).
+      const viewer = await services.user.getViewer({
+        contactPAConfigInput: { page: 1, offset: 50 },
+        contactCompaniesSearchInput: { page: 1, offset: 50 },
+      });
       return viewer ? ((toPlain(viewer) as unknown) as Contact | Customer) : null;
     } catch {
       return null;

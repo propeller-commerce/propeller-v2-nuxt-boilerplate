@@ -51,3 +51,37 @@ export function buildTextFilters(filters: Record<string, string[]>) {
     attributeValues: values,
   }));
 }
+
+/**
+ * Encode listing state into a `router.push` query object — the write-side
+ * inverse of `useListingParams`, omitting anything at its default so URLs stay
+ * clean. Shared by the machines parts view (and reusable by category/search).
+ * Accepts an optional `term` for the machines in-node search.
+ */
+export function buildListingQuery(
+  listing: {
+    page: number;
+    offset: number;
+    sortField: string;
+    sortOrder: string;
+    filters: Record<string, string[]>;
+    minPrice?: number;
+    maxPrice?: number;
+    term?: string;
+  },
+  opts: { defaultSortField?: string; defaultSortOrder?: string; defaultOffset?: number } = {},
+): Record<string, string> {
+  const { defaultSortField = 'CATEGORY_ORDER', defaultSortOrder = 'DESC', defaultOffset = 12 } = opts;
+  const query: Record<string, string> = {};
+  if (listing.page > 1) query.page = String(listing.page);
+  for (const [key, values] of Object.entries(listing.filters)) {
+    if (values.length > 0) query[key] = JSON.stringify(values);
+  }
+  if (listing.minPrice !== undefined) query.minPrice = String(listing.minPrice);
+  if (listing.maxPrice !== undefined) query.maxPrice = String(listing.maxPrice);
+  if (listing.offset !== defaultOffset) query.offset = String(listing.offset);
+  if (listing.sortField !== defaultSortField) query.sortField = String(listing.sortField);
+  if (listing.sortOrder !== defaultSortOrder) query.sortOrder = String(listing.sortOrder);
+  if (listing.term) query.term = listing.term;
+  return query;
+}

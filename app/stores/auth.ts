@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { type Contact, type Customer, PurchaseRole } from '@propeller-commerce/propeller-sdk-v2';
 import { isBrowser, safeStorage, setBrowserCookie, deleteBrowserCookie } from '~/utils/ssr';
+import { configuration } from '~/utils/config';
 
 type User = Contact | Customer;
 
@@ -207,7 +208,15 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const nuxtApp = useNuxtApp();
       const services = nuxtApp.$services as { user?: { getViewer: (args: object) => Promise<unknown> } } | undefined;
-      const viewer = await services?.user?.getViewer({});
+      // Request the tracked company/customer attributes so a post-mutation
+      // refresh keeps MY_INSTALLATIONS on the user. Mirrors propeller-next's
+      // AuthContext.refreshUser.
+      const viewer = await services?.user?.getViewer({
+        companyAttributesInput: { attributeDescription: { names: configuration.companyTrackAttributes } },
+        customerAttributesInput: { attributeDescription: { names: configuration.customerTrackAttributes } },
+        contactPAConfigInput: configuration.contactPAConfigInput,
+        contactCompaniesSearchInput: configuration.contactCompaniesSearchInput,
+      });
       if (viewer) {
         const clean = sanitizeUser(viewer) as User;
         user.value = clean;
