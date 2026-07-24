@@ -53,6 +53,9 @@ export default defineNuxtConfig({
     // /api/mollie/* Nitro routes read these via useRuntimeConfig(event). The
     // client-visible toggles (provider on/off, on-account method codes) live
     // under `public` below. Mirrors propeller-vue's server/client env split.
+    // `paymentProvider` selects the active PSP: '' (none) | 'mollie' |
+    // 'multisafepay'. Only one is active at a time; the matching key block below
+    // is read. The client-visible copy lives under `public` for the checkout gate.
     paymentProvider: process.env.PAYMENT_PROVIDER || '',
     mollieLiveKey: process.env.MOLLIE_LIVE_KEY || '',
     mollieTestKey: process.env.MOLLIE_TEST_KEY || '',
@@ -60,6 +63,15 @@ export default defineNuxtConfig({
     // Explicit webhook URL override (point at a tunnel in dev). When empty the
     // webhook URL is derived from NUXT_PUBLIC_SITE_URL + /api/mollie/webhook.
     mollieWebhookUrl: process.env.MOLLIE_WEBHOOK_URL || '',
+    // MultiSafepay keys + mode — read by the /api/msp/* Nitro routes when
+    // PAYMENT_PROVIDER=multisafepay. Same server-only posture as Mollie above.
+    mspLiveKey: process.env.MSP_LIVE_KEY || '',
+    mspTestKey: process.env.MSP_TEST_KEY || '',
+    mspTestMode: process.env.MSP_TEST_MODE || 'true',
+    // Explicit webhook override; empty → NUXT_PUBLIC_SITE_URL + /api/msp/webhook.
+    mspWebhookUrl: process.env.MSP_WEBHOOK_URL || '',
+    // Optional MultiSafepay locale (default en_US in the package when empty).
+    mspLocale: process.env.MSP_LOCALE || '',
     // Comma-separated method codes that settle "on account" (no PSP).
     onAccountPayments: process.env.ON_ACCOUNT_PAYMENTS || '',
 

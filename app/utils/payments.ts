@@ -53,7 +53,33 @@ export function isOnAccountMethod(pub: PaymentsPublicConfig, method: string | un
   return onAccountMethods(pub).includes(method.trim().toUpperCase());
 }
 
-/** Whether Mollie is the active payment provider, per the public runtime config. */
+/**
+ * The active PSP slug from the public runtime config's `paymentProvider` —
+ * `'mollie'` | `'multisafepay'` | `null` (no PSP). Only one PSP is active at a
+ * time. The slug also picks the host route base (`pspApiBase`) and the `?psp=`
+ * return marker. Mirrors propeller-vue / propeller-next `activePspProvider`.
+ */
+export type PspProvider = 'mollie' | 'multisafepay';
+
+export function activePspProvider(pub: PaymentsPublicConfig): PspProvider | null {
+  const p = (pub.paymentProvider || '').trim().toLowerCase();
+  return p === 'mollie' || p === 'multisafepay' ? p : null;
+}
+
+/** API route base for a PSP: mollie → `/api/mollie`, multisafepay → `/api/msp`. */
+export function pspApiBase(provider: PspProvider): string {
+  return provider === 'multisafepay' ? '/api/msp' : '/api/mollie';
+}
+
+/** sessionStorage key the checkout stashes the PSP payment id under, per order. */
+export function pspStashKey(provider: PspProvider, orderId: number | string): string {
+  return `${provider}_payment_${orderId}`;
+}
+
+/**
+ * Whether Mollie specifically is the active provider. Thin wrapper over
+ * `activePspProvider`, kept for backward compatibility with existing callers.
+ */
 export function isMollieEnabled(pub: PaymentsPublicConfig): boolean {
-  return (pub.paymentProvider || '').trim().toLowerCase() === 'mollie';
+  return activePspProvider(pub) === 'mollie';
 }
