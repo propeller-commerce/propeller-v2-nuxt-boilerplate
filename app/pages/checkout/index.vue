@@ -296,7 +296,7 @@ import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref } from '~/utils/config';
 import { COUNTRIES } from '~/utils/countries';
 import { restoreManagerCart } from '~/utils/cartHelpers';
-import { isOnAccountMethod, isMollieEnabled } from '~/utils/payments';
+import { isOnAccountMethod, activePspProvider, pspApiBase, pspStashKey } from '~/utils/payments';
 import { useTranslations } from '~/composables/useTranslations';
 
 const addressCardLabels = useTranslations('AddressCard');
@@ -510,22 +510,23 @@ async function handlePlaceOrder(reference?: string, notes?: string) {
 
   const quote = isQuoteMode.value;
   const onAccount = isOnAccountMethod(publicConfig, selectedPayment.value);
-  // PSP path only when Mollie is on, it's a real sale, and the method isn't
-  // settled on account.
-  const goesThroughMollie = !quote && !onAccount && isMollieEnabled(publicConfig);
+  // PSP path only when a PSP (Mollie or MultiSafepay) is on, it's a real sale,
+  // and the method isn't settled on account.
+  const psp = activePspProvider(publicConfig);
+  const goesThroughPsp = !quote && !onAccount && psp !== null;
 
-  // quote → REQUEST · via Mollie → UNFINISHED (the webhook finalizes it on
-  // `paid`) · everything else → NEW (settled immediately, no PSP).
-  const orderStatus = quote ? 'REQUEST' : goesThroughMollie ? 'UNFINISHED' : 'NEW';
+  // quote → REQUEST · via PSP → UNFINISHED (the webhook finalizes it on paid) ·
+  // everything else → NEW (settled immediately, no PSP).
+  const orderStatus = quote ? 'REQUEST' : goesThroughPsp ? 'UNFINISHED' : 'NEW';
 
   const cartId = (cart.value as any).cartId;
 
   // Retry after a payment-start failure: this cart was already converted to an
-  // order by a prior placeOrder. Reuse that orderId and re-run only the Mollie
+  // order by a prior placeOrder. Reuse that orderId and re-run only the PSP
   // hand-off instead of placing the order again (which would strand a duplicate
   // UNFINISHED order on a non-idempotent backend).
   const alreadyPlaced =
-    goesThroughMollie && placedOrder.value?.cartId === cartId
+    goesThroughPsp && placedOrder.value && placedOrder.value.cartId === cartId
       ? placedOrder.value.orderId
       : null;
 
@@ -536,9 +537,9 @@ async function handlePlaceOrder(reference?: string, notes?: string) {
         reference,
         notes,
         orderStatus,
-        // A Mollie order is finalized later by the payment webhook (on paid): don't
+        // A PSP order is finalized later by the payment webhook (on paid): don't
         // send the confirmation email / clear the backend cart at placement.
-        ...(goesThroughMollie ? { finalizeOrder: false } : {}),
+        ...(goesThroughPsp ? { finalizeOrder: false } : {}),
       });
 
   if (!result.ok) {
@@ -549,17 +550,17 @@ async function handlePlaceOrder(reference?: string, notes?: string) {
   const orderId = result.data.orderId;
   // Remember the order this cart produced so a payment-start retry reuses it.
   // Only PSP orders keep the cart around to retry against.
-  if (goesThroughMollie) placedOrder.value = { cartId, orderId };
+  if (goesThroughPsp) placedOrder.value = { cartId, orderId };
 
-  // PSP step: hand off to Mollie's hosted checkout.
-  if (goesThroughMollie) {
-    const checkoutUrl = await startMolliePayment(orderId);
+  // PSP step: hand off to the provider's hosted checkout.
+  if (goesThroughPsp && psp) {
+    const checkoutUrl = await startPspPayment(psp, orderId);
     if (checkoutUrl) {
       window.location.href = checkoutUrl; // hard redirect off-site
       return;
     }
     // Start failed: keep the cart, surface the error, let them retry. The order
-    // stays UNFINISHED — Mollie can still be retried, or it ages out.
+    // stays UNFINISHED — the PSP can still be retried, or it ages out.
     orderPlaced.value = false;
     paymentStartError.value =
       molliePaymentLabels.value.startFailed ?? 'Could not start the payment. Please try again.';
@@ -577,27 +578,31 @@ async function handlePlaceOrder(reference?: string, notes?: string) {
 }
 
 /**
- * Create the Mollie payment for a just-placed order and return its hosted
- * checkout URL (or null on failure). Stashes the Mollie payment id in
- * sessionStorage so the return page can resolve the real outcome — Mollie sends
- * every outcome back to the same redirect URL.
+ * Create the PSP payment for a just-placed order and return its hosted checkout
+ * URL (or null on failure). Stashes the PSP payment id in sessionStorage so the
+ * return page can resolve the real outcome — the PSP sends every outcome back to
+ * the same redirect URL. Provider-agnostic: `pspApiBase` picks the host route
+ * (`/api/mollie` vs `/api/msp`) and the `?psp=` marker tags the return.
  */
-async function startMolliePayment(orderId: number): Promise<string | null> {
+async function startPspPayment(
+  provider: NonNullable<ReturnType<typeof activePspProvider>>,
+  orderId: number,
+): Promise<string | null> {
   try {
     const total = (cart.value as any)?.total;
-    // Mollie collects the gross (incl. VAT) amount the shopper pays.
+    // The PSP collects the gross (incl. VAT) amount the shopper pays.
     const amount = total?.totalGross ?? total?.totalNet;
     if (amount === undefined || amount === null) return null;
 
     const origin = (publicConfig.siteUrl || window.location.origin).replace(/\/$/, '');
-    // `psp=mollie` marks this as a PSP return so the thank-you page resolves the
-    // real payment outcome instead of assuming success.
+    // `psp=<provider>` marks this as a PSP return so the thank-you page resolves
+    // the real payment outcome instead of assuming success.
     const redirectUrl =
       origin +
       localizeHref(`/checkout/thank-you/${orderId}`, languageStore.language) +
-      '?psp=mollie';
+      `?psp=${provider}`;
 
-    const res = await fetch('/api/mollie/create-payment', {
+    const res = await fetch(`${pspApiBase(provider)}/create-payment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -615,14 +620,14 @@ async function startMolliePayment(orderId: number): Promise<string | null> {
     const data = (await res.json()) as { checkoutUrl?: string; paymentId?: string };
     if (data.paymentId && typeof window !== 'undefined') {
       try {
-        window.sessionStorage.setItem(`mollie_payment_${orderId}`, data.paymentId);
+        window.sessionStorage.setItem(pspStashKey(provider, orderId), data.paymentId);
       } catch {
         /* sessionStorage unavailable — the return page falls back to order status */
       }
     }
     return data.checkoutUrl ?? null;
   } catch (e) {
-    console.error('startMolliePayment failed', e);
+    console.error('startPspPayment failed', e);
     return null;
   }
 }
