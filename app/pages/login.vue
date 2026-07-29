@@ -25,34 +25,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { CartService } from '@propeller-commerce/propeller-sdk-v2';
 import type { Cart, Contact, Customer } from '@propeller-commerce/propeller-sdk-v2';
-import { LoginForm, mergeAnonymousCart, useCart, type AnyUser } from '@propeller-commerce/propeller-v2-vue-ui';
-import { useAuthStore } from '~/stores/auth';
+import { LoginForm } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useCartStore } from '~/stores/cart';
-import { useCompanyStore } from '~/stores/company';
 import { useLanguageStore } from '~/stores/language';
-import { configuration, localizeHref } from '~/utils/config';
+import { localizeHref } from '~/utils/config';
 import { useTranslations } from '~/composables/useTranslations';
+import { useAfterLogin } from '~/composables/useAfterLogin';
 
 const loginFormLabels = useTranslations('LoginForm');
 
 const router = useRouter();
 const route = useRoute();
-const authStore = useAuthStore();
 const cartStore = useCartStore();
-const companyStore = useCompanyStore();
 const languageStore = useLanguageStore();
-const { $graphqlClient } = useNuxtApp();
-
-const { fetchActiveCart, resolveCart } = useCart({
-  graphqlClient: $graphqlClient as any,
-  user: computed(() => authStore.user as AnyUser),
-  companyId: computed(() => companyStore.selectedCompany?.companyId ?? undefined),
-  language: computed(() => languageStore.language),
-  configuration,
-});
+// Shared post-login sequence, reused by the magic-login page. See composables/useAfterLogin.
+const runAfterLogin = useAfterLogin();
 
 async function handleLoginSuccess(
   user: Contact | Customer,
@@ -61,61 +49,8 @@ async function handleLoginSuccess(
   expiresAt?: string,
   anonymousCart?: Cart | null
 ) {
-  authStore.setUser(user);
-  if (accessToken) {
-    authStore.setToken(accessToken);
-  }
-  if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
-  if (expiresAt) localStorage.setItem('expiresAt', expiresAt);
-
-  window.dispatchEvent(new CustomEvent('userLoggedIn'));
-
-  const contactCompany = (user as Contact).company;
-  if (contactCompany?.companyId) {
-    companyStore.setSelectedCompany(contactCompany);
-  }
-
-  // Mirror token + refresh into httpOnly cookies for SSR.
-  if (accessToken) {
-    await $fetch('/api/auth/session', {
-      method: 'POST',
-      body: { accessToken, refreshToken },
-    }).catch(() => {});
-  }
-
-  const userLang = (user as any).primaryLanguage;
-  if (userLang && userLang !== languageStore.language) {
-    languageStore.setLanguage(userLang);
-  }
-
-  let targetCart = await fetchActiveCart();
-
-  if (anonymousCart?.items?.length) {
-    if (!targetCart) {
-      targetCart = await resolveCart();
-    }
-    const merged = await mergeAnonymousCart({
-      graphqlClient: $graphqlClient as any,
-      targetCartId: targetCart.cartId,
-      anonymousCart,
-      language: languageStore.language,
-      imageSearchFilters: configuration.imageSearchFiltersGrid,
-      imageVariantFilters: configuration.imageVariantFiltersSmall,
-    });
-    if (merged) targetCart = merged;
-
-    if (anonymousCart.cartId && anonymousCart.cartId !== targetCart.cartId) {
-      try {
-        await new CartService($graphqlClient as any).deleteCart({ id: anonymousCart.cartId });
-      } catch (e) {
-        console.error('[auth] Failed to delete anonymous cart', e);
-      }
-    }
-  }
-
-  cartStore.setCart(targetCart ?? null);
-
-  const redirect = (route.query.redirect as string) || localizeHref('/account', userLang || languageStore.language);
+  const { effectiveLanguage } = await runAfterLogin(user, accessToken, refreshToken, expiresAt, anonymousCart);
+  const redirect = (route.query.redirect as string) || localizeHref('/account', effectiveLanguage);
   router.push(redirect);
 }
 
