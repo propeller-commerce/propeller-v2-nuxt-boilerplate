@@ -332,32 +332,32 @@ const activeTextFilters = computed<ProductTextFilterInput[]>(() =>
 // and the page renders "$setup.getCategoryName is not a function".
 const categoryName = computed<string>(() => {
   if (!category.value) return slug.value;
-  const nameArr = (category.value as any).name || (category.value as any).names || [];
-  const match = nameArr.find((n: any) => n.language === languageStore.language);
+  const nameArr = category.value.names ?? [];
+  const match = nameArr.find((n) => n.language === languageStore.language);
   return match?.value || nameArr[0]?.value || slug.value;
 });
 
 const seoTitle = computed(
   () =>
     resolveSeoTitle(
-      (category.value as any)?.metadataTitles,
-      (category.value as any)?.name,
+      category.value?.metadataTitles,
+      category.value?.names,
       languageStore.language
     ) || categoryName.value || 'Category'
 );
 const seoDescription = computed(
   () =>
     resolveSeoDescription(
-      (category.value as any)?.metadataDescriptions,
-      [(category.value as any)?.shortDescription, (category.value as any)?.description],
+      category.value?.metadataDescriptions,
+      [category.value?.shortDescriptions, category.value?.descriptions],
       languageStore.language
     ) || ''
 );
 const seoKeywords = computed(
-  () => resolveSeoKeywords((category.value as any)?.metadataKeywords, languageStore.language) || ''
+  () => resolveSeoKeywords(category.value?.metadataKeywords, languageStore.language) || ''
 );
 const seoCanonical = computed(() =>
-  resolveCanonicalUrl((category.value as any)?.metadataCanonicalUrls, languageStore.language)
+  resolveCanonicalUrl(category.value?.metadataCanonicalUrls, languageStore.language)
 );
 
 useHead({
