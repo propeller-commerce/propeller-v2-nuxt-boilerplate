@@ -220,6 +220,14 @@ endpoints and the SDK proxy — they **never reach the client bundle**.
 - `BASE_CATEGORY_ID` — root category ID (also exposed publicly)
 - `CHANNEL_ID` — channel for order/quote listing filters (also exposed
   publicly)
+- `PUNCHOUT_ENABLED` — master switch for PunchOut (`true`/`false`); see the
+  [PunchOut](#punchout-oci--cxml) section
+- `CXML_CONTACT_ID` — CSV of candidate buyer contact ids (their
+  `CXML_SHARED_SECRET` attribute is matched against the request secret)
+- `PUNCHOUT_DEBUG` — `true` renders a readable OCI/cXML preview instead of
+  auto-posting to the ERP
+- `PUNCHOUT_CURRENCY` / `PUNCHOUT_TRANSFER_TARGET` — optional (default `EUR` /
+  `_self`)
 
 **Public (`NUXT_PUBLIC_*` — inlined into the client bundle):**
 
@@ -324,6 +332,51 @@ across all three consumers. The cache + revalidate contract
 (`tagFor`, `TAG_CATALOG`, `ANONYMOUS_CACHE_TTL_SECONDS`, the
 `/api/revalidate` webhook body) is byte-identical across them by design —
 the same backend webhook drives every consumer.
+
+## PunchOut (OCI + cXML)
+
+B2B e-procurement PunchOut, built on magic-token login and powered by
+[`@propeller-commerce/propeller-v2-punchout`](https://www.npmjs.com/package/@propeller-commerce/propeller-v2-punchout)
+(the pure protocol logic). A buyer punches out from their ERP (SAP Ariba, Coupa,
+SAP OCI), shops in a live session, and transfers the cart back as a requisition.
+
+**Wiring (Nitro routes that call the package):**
+
+| Concern | File |
+|---|---|
+| cXML `PunchOutSetupRequest` | `server/api/punchout/cxml/setup.post.ts` |
+| Entry → session cookie → magic-login | `server/api/punchout/enter.get.ts` |
+| Cart transfer | `server/api/punchout/transfer.post.ts` |
+| Server glue + **field-mapping overrides** | `server/utils/punchout.ts` |
+| Cart-page transfer button | `app/pages/cart.vue` |
+
+**How it works**
+
+- **cXML**: the buyer's system POSTs a `PunchOutSetupRequest` to
+  `/api/punchout/cxml/setup`. The route reads the candidate contacts from
+  `CXML_CONTACT_ID`, compares each one's `CXML_SHARED_SECRET` contact track
+  attribute to the request's shared secret, mints a **one-time, 1-hour** magic
+  token with the order-editor key, and returns a `PunchOutSetupResponse` whose
+  StartPage is `/api/punchout/enter`.
+- **OCI**: no handshake — the ERP opens
+  `/api/punchout/enter?mode=oci&mtoken=…&HOOK_URL=…` directly.
+- `enter` stores an httpOnly `punchout` cookie (survives magic-login's session
+  clear) and redirects to `/magic-login`. The cart page then shows **Transfer
+  cart to procurement** → `/api/punchout/transfer`, which builds the OCI
+  `NEW_ITEM-*` set / cXML `PunchOutOrderMessage` and hands it back to the ERP.
+
+**Configuring the output fields** — override any field in
+`PUNCHOUT_MAPPINGS.ociMapping` / `cxmlMapping` in `server/utils/punchout.ts`
+(deep-merged over the package defaults; `null` drops a field). See the package
+README for the rule shape.
+
+**Local testing** — set `PUNCHOUT_ENABLED=true`, `CXML_CONTACT_ID=<id>`,
+`PUNCHOUT_DEBUG=true`, then POST the setup request (`curl -X POST
+http://localhost:5000/api/punchout/cxml/setup -H 'Content-Type: application/xml'
+--data-binary @SetupRequest.xml`) and open the returned StartPage URL, or open
+`/api/punchout/enter?mode=oci&mtoken=…&HOOK_URL=…` for OCI. In debug mode the
+transfer renders a readable preview and keeps the cart re-runnable; the magic
+token is one-time, so re-POST the setup for a fresh StartPage.
 
 ## License
 
