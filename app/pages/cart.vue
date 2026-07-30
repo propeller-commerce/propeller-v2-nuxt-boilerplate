@@ -31,8 +31,30 @@
           </div>
 
           <div class="h-fit space-y-4">
+            <!-- PunchOut: hand the cart back to the buyer's procurement system.
+                 Shown only in a punchout session (readable flag cookie set by
+                 /api/punchout/enter). Native form POST — the server route builds
+                 the OCI/cXML payload and returns a self-submitting form. -->
+            <form
+              v-if="punchoutActive && cartStore.cart?.cartId"
+              method="POST"
+              action="/api/punchout/transfer"
+              class="rounded-lg border bg-card p-4"
+            >
+              <p class="mb-3 text-sm text-muted-foreground">
+                You are shopping from your procurement system. Send this cart back
+                as a requisition.
+              </p>
+              <input type="hidden" name="cartId" :value="cartStore.cart.cartId" />
+              <button
+                type="submit"
+                class="w-full rounded-lg bg-primary px-6 py-3 text-primary-foreground transition hover:bg-primary/90"
+              >
+                Transfer cart to procurement
+              </button>
+            </form>
             <CartSummary
-              v-if="cartStore.cart"
+              v-if="!punchoutActive && cartStore.cart"
               :cart="cartStore.cart as Cart"
               :onCheckoutButtonClick="() => router.push(localizeHref('/checkout', languageStore.language))"
               :afterRequestAuthorization="afterRequestAuthorization"
@@ -40,7 +62,7 @@
               :labels="cartSummaryLabels"
             />
             <ActionCode
-              v-if="cartStore.cart"
+              v-if="!punchoutActive && cartStore.cart"
               :cart="cartStore.cart as Cart"
               :afterActionCodeApply="(cart: any) => cartStore.setCart(cart)"
               :afterActionCodeRemove="(cart: any) => cartStore.setCart(cart)"
@@ -63,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { type Cart, CrossupsellType } from '@propeller-commerce/propeller-sdk-v2';
 import { ActionCode, CartBonusItems, CartItem, CartSummary } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useCartStore } from '~/stores/cart';
@@ -82,6 +104,12 @@ const cartStore = useCartStore();
 const languageStore = useLanguageStore();
 
 const cartItems = computed(() => cartStore.cart?.items || []);
+
+// PunchOut session flag — read after mount (the flag cookie is client-readable).
+const punchoutActive = ref(false);
+onMounted(() => {
+  punchoutActive.value = /(?:^|;\s*)punchout_active=/.test(document.cookie);
+});
 
 function afterRequestAuthorization(cart: Cart) {
   cartStore.setCart(restoreManagerCart());
