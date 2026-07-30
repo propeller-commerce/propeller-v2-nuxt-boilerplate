@@ -75,6 +75,20 @@ export default defineNuxtConfig({
     // Comma-separated method codes that settle "on account" (no PSP).
     onAccountPayments: process.env.ON_ACCOUNT_PAYMENTS || '',
 
+    // ── PunchOut (OCI + cXML) — server-only ─────────────────────────────────
+    // The /api/punchout/* Nitro routes read these via useRuntimeConfig(event).
+    // Wire-format logic lives in @propeller-commerce/propeller-v2-punchout; the
+    // glue is in server/utils/punchout.ts. Secrets never reach the client.
+    punchoutEnabled: process.env.PUNCHOUT_ENABLED || '',
+    // Candidate buyer contact ids (CSV) = the plugin's PROPELLER_CXML_CONTACT_ID.
+    // Each contact's CXML_SHARED_SECRET track attribute is compared to the
+    // inbound cXML SharedSecret.
+    cxmlContactId: process.env.CXML_CONTACT_ID || '',
+    punchoutCurrency: process.env.PUNCHOUT_CURRENCY || 'EUR',
+    punchoutTransferTarget: process.env.PUNCHOUT_TRANSFER_TARGET || '_self',
+    // Debug: transfer renders a readable OCI/cXML preview instead of auto-POST.
+    punchoutDebug: process.env.PUNCHOUT_DEBUG || '',
+
     public: {
       // The client talks to /api/graphql by default (proxy injects apikey
       // server-side). Override to point at the upstream endpoint directly
