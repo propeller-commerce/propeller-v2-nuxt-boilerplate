@@ -25,6 +25,7 @@ import {
   ProductSortField,
   SortOrder,
   ProductSearchableField,
+  channelService,
 } from '@propeller-commerce/propeller-sdk-v2';
 import { toPlain, type MenuCategory } from '@propeller-commerce/propeller-v2-vue-ui/shared';
 import {
@@ -32,6 +33,8 @@ import {
   imageSearchFiltersGrid,
   imageVariantFiltersMedium,
   imageVariantFiltersLarge,
+  channelId,
+  baseCategoryId,
 } from '../../app/utils/config';
 import { cachedSdkFetch, stableStringify } from './cache';
 import { ANONYMOUS_CACHE_TTL_SECONDS, TAG_CATALOG, tagFor } from './tags';
@@ -93,11 +96,82 @@ export interface ListingFetchOptions {
   language?: string;
 }
 
-function resolveUserId(user: Contact | Customer | null): number | undefined {
-  if (!user) return undefined;
+function resolveUserId(user: Contact | Customer | null, anonymousUserId?: number): number | undefined {
+  if (!user) return anonymousUserId;
   if ('contactId' in user) return (user as Contact).contactId;
   if ('customerId' in user) return (user as Customer).customerId;
-  return undefined;
+  return anonymousUserId;
+}
+
+// ── Channel-derived defaults (anonymous user + catalog root) ────────────────
+
+/**
+ * Defaults the storefront reads off the channel instead of hardcoding them:
+ *  - `anonymousUserId` — the guest account anonymous price/product queries run
+ *    as, so anonymous pricing follows the channel's configured account rather
+ *    than the backend apikey default.
+ *  - `catalogRootId` — the catalog root category, used as the base-category
+ *    fallback when none is configured (`NUXT_PUBLIC_BASE_CATEGORY_ID` unset).
+ */
+export interface ChannelDefaults {
+  anonymousUserId?: number;
+  catalogRootId?: number;
+}
+
+// Channel config changes rarely; memo it for the anonymous catalog TTL so the
+// `channel(channelId)` query doesn't run on every listing/menu render. Nitro
+// has no `unstable_cache` equivalent that keys a plain function, so a
+// module-level TTL cell stands in for propeller-next's `unstable_cache`.
+// ponytail: reuses the (anonymous) `infra.client` the caller already holds
+// instead of building a fresh client — createServerClient needs an H3Event
+// these helpers don't get, and on a cache hit no client is touched at all.
+let channelDefaultsCache: { value: ChannelDefaults; expires: number } | undefined;
+
+async function getChannelDefaults(
+  client: ServerInfra['client'],
+  channelId: number
+): Promise<ChannelDefaults> {
+  const now = Date.now();
+  if (channelDefaultsCache && channelDefaultsCache.expires > now) return channelDefaultsCache.value;
+  try {
+    const channel = await channelService(client).getChannel({ channelId });
+    const value: ChannelDefaults = {
+      anonymousUserId: channel?.anonymousUserId ?? undefined,
+      catalogRootId: channel?.catalogRootId ?? undefined,
+    };
+    channelDefaultsCache = { value, expires: now + ANONYMOUS_CACHE_TTL_SECONDS * 1000 };
+    return value;
+  } catch {
+    // Channel unreachable / misconfigured — anonymous falls back to the backend
+    // apikey default pricing and the configured base category.
+    return {};
+  }
+}
+
+/**
+ * User id a listing/search query runs as: the logged-in contact/customer, or —
+ * for an anonymous render — the channel's `anonymousUserId` so guest pricing
+ * follows the channel's configured account. Only anonymous renders hit the
+ * channel query (and only its cache after the first).
+ */
+async function listingUserId(infra: ServerInfra): Promise<number | undefined> {
+  if (infra.user) return resolveUserId(infra.user);
+  const { anonymousUserId } = await getChannelDefaults(infra.client, channelId);
+  return anonymousUserId;
+}
+
+/**
+ * Server-side base category: the explicitly configured
+ * `NUXT_PUBLIC_BASE_CATEGORY_ID` / `BASE_CATEGORY_ID`, or — when none is
+ * provided — the channel's catalog root. Falls back to `config.baseCategoryId`
+ * (its own '17' default) if the channel exposes no root.
+ */
+export async function resolveBaseCategoryId(infra: ServerInfra): Promise<number> {
+  const raw = process.env.NUXT_PUBLIC_BASE_CATEGORY_ID || process.env.BASE_CATEGORY_ID;
+  const explicit = raw ? parseInt(raw, 10) : NaN;
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const { catalogRootId } = await getChannelDefaults(infra.client, channelId);
+  return catalogRootId ?? baseCategoryId;
 }
 
 function resolveCompanyId(infra: ServerInfra): number | undefined {
@@ -166,7 +240,7 @@ export async function fetchCategory(
   const sortField = opts.sortField ?? ProductSortField.CATEGORY_ORDER;
   const sortOrder = opts.sortOrder ?? SortOrder.DESC;
   const sortInputs: ProductSortInput[] = [{ field: sortField, order: sortOrder }];
-  const userId = resolveUserId(infra.user);
+  const userId = await listingUserId(infra);
   const companyId = resolveCompanyId(infra);
 
   const categoryProductSearchInput: CategoryProductSearchInput = {
@@ -221,7 +295,7 @@ export async function fetchSearch(
   const sortField = opts.sortField ?? ProductSortField.RELEVANCE;
   const sortOrder = opts.sortOrder ?? SortOrder.DESC;
   const sortInputs: ProductSortInput[] = [{ field: sortField, order: sortOrder }];
-  const userId = resolveUserId(infra.user);
+  const userId = await listingUserId(infra);
   const companyId = resolveCompanyId(infra);
 
   const categoryProductSearchInput: CategoryProductSearchInput = {

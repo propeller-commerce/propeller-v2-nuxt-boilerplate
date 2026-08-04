@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-08-04
+
+### Added
+- Anonymous user id is now derived from the channel at runtime instead of a
+  hardcoded config value. `server/utils/fetchers.ts` reads `channel(channelId)`
+  once (cached) and uses its `anonymousUserId` for anonymous catalog/search
+  price queries — so guest pricing follows the channel's configured account
+  rather than the backend apikey default — and its `catalogRootId` as the
+  base-category fallback when the base category env is unset.
+
+### Fixed
+- Cluster configurator now renders options for ENUM-spanned clusters (an empty
+  option list previously blocked variant selection). Arrives via the
+  `propeller-v2-vue-ui` / `propeller-v2-core-ui` update.
+
 ## [1.7.0] - 2026-07-30
 
 ### Added
