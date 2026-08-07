@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-08-04
+
+### Added
+- Anonymous user id is now derived from the channel at runtime instead of a
+  hardcoded config value. `server/utils/fetchers.ts` reads `channel(channelId)`
+  once (cached) and uses its `anonymousUserId` for anonymous catalog/search
+  price queries — so guest pricing follows the channel's configured account
+  rather than the backend apikey default — and its `catalogRootId` as the
+  base-category fallback when the base category env is unset.
+
+### Changed
+- Bumped `@propeller-commerce/propeller-sdk-v2` to `^0.16.0` (additive over
+  0.14: the 0.15 inventory stock filter and 0.16 grid attributes; no migration).
+- Bumped `@propeller-commerce/propeller-v2-vue-ui` to `^0.13.0` (from 0.8.0),
+  which pulls in `propeller-v2-core-ui` 0.6.1 — the version carrying the ENUM
+  configurator fix below. Typecheck + Nitro build verified clean across the
+  boilerplate's vue-ui usage.
+
+### Fixed
+- Cluster configurator now renders options for ENUM-spanned clusters (an empty
+  option list previously blocked variant selection). The shared attribute
+  extractor read `value` for `AttributeEnumValue`, but the schema exposes those
+  on `enumValues`. Arrives via the `propeller-v2-vue-ui` 0.13.0 /
+  `propeller-v2-core-ui` 0.6.1 update.
+
 ## [1.7.0] - 2026-07-30
 
 ### Added
