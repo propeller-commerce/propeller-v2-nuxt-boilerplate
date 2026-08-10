@@ -154,7 +154,7 @@
                 <div class="space-y-3">
                   <h3 class="font-semibold text-sm uppercase tracking-wide">Payment Method</h3>
                   <p v-if="step3Submitted && !selectedPayment" class="text-sm text-destructive">Please select a payment method</p>
-                  <CartPaymethods v-if="cart" :cart="cart as any" :onPaymethodSelect="(pm: any) => (selectedPayment = pm.code)" :labels="cartPaymethodsLabels" />
+                  <CartPaymethods v-if="cart" :cart="cart as any" :onPaymethodSelect="(pm: any) => handlePaymethodSelect(pm.code)" :labels="cartPaymethodsLabels" />
                 </div>
                 <div class="space-y-3">
                   <h3 class="font-semibold text-sm uppercase tracking-wide">Carrier</h3>
@@ -486,6 +486,24 @@ watch(
   },
   { immediate: true }
 );
+
+// Persist the payment method the moment it is picked, so the order summary
+// shows THIS method's transaction costs instead of the previously stored
+// method's (PWP-930) — the totals used to only refresh on Continue, which made
+// the grand total jump at step 4. CartPaymethods also fires this on mount to
+// report the cart's stored method; skip the mutation when nothing changed.
+async function handlePaymethodSelect(code: string) {
+  selectedPayment.value = code;
+  const c = cart.value as any;
+  if (!c?.cartId || c.paymentData?.method === code) return;
+  try {
+    const updatedCart = await updateCartSettings(c.cartId, { paymentMethod: code });
+    if (updatedCart) cartStore.setCart(updatedCart);
+  } catch (e) {
+    // Non-fatal: the totals stay stale, but Continue re-sends the method.
+    console.error('[checkout] persist payment method failed:', e);
+  }
+}
 
 async function handleStep3Continue() {
   const hasCarriers = ((cart.value as any)?.carriers?.length ?? 0) > 0;
