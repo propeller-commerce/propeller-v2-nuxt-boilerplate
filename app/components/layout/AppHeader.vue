@@ -185,7 +185,12 @@
               :class="['absolute left-0 top-full z-50', showMainMenu ? 'visible opacity-100' : 'invisible opacity-0 pointer-events-none h-0 overflow-hidden']"
             >
               <ClientOnly>
+                <!-- `categoryId` drives only the fallback fetch (`tree` wins).
+                     It is the env override and may be undefined when the channel
+                     is meant to drive the root — the tree still arrives from
+                     /api/catalog/menu, which resolves it server-side (PWP-913). -->
                 <PropellerMenu
+                  v-if="configuration.baseCategoryId !== undefined"
                   :categoryId="configuration.baseCategoryId"
                   :depth="configuration.menuDepth"
                   :tree="menuTreeProp"
@@ -229,7 +234,7 @@
 
       <ClientOnly>
         <PropellerMenu
-          v-if="showCategoriesMenu"
+          v-if="showCategoriesMenu && configuration.baseCategoryId !== undefined"
           :categoryId="configuration.baseCategoryId"
           :depth="configuration.menuDepth"
           :tree="menuTreeProp"
