@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.2] - 2026-08-10
+
+### Fixed
+
+- **Cart and checkout showed the same lines on different tax bases.** With the
+  header toggle on "Incl. BTW", the cart printed a line incl. VAT that checkout
+  printed excl. VAT, neither labelled (PWP-923). `ItemsOverview` ignored
+  `includeTax` while `CartItem` on the cart page followed it. Fixed in
+  `propeller-v2-vue-ui` 0.14.4; both components now read the same
+  `totalSum` / `totalSumNet` fields. No host change needed — `app.vue` already
+  binds `:include-tax` on the provider.
+
+### Changed
+
+- `@propeller-commerce/propeller-v2-vue-ui` → `^0.14.4`.
+
 ## [1.8.1] - 2026-08-10
 
 ### Fixed
