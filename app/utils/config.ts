@@ -59,7 +59,15 @@ function buildEntityUrl(page: string, id?: number | string, slug?: string, patte
   return `${prefix}/${parts.join('/')}`;
 }
 
-export const baseCategoryId = parseInt(process.env.NUXT_PUBLIC_BASE_CATEGORY_ID || process.env.BASE_CATEGORY_ID || '17', 10);
+// Env override ONLY — no literal. When unset the catalog root comes from the
+// channel: `resolveBaseCategoryId()` server-side, seeded to the client through
+// the `baseCategoryId` state below. A hardcoded id is wrong on any shop whose
+// catalog root isn't that number (PWP-913).
+export const baseCategoryId: number | undefined = (() => {
+  const raw = process.env.NUXT_PUBLIC_BASE_CATEGORY_ID || process.env.BASE_CATEGORY_ID;
+  const parsed = raw ? parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+})();
 export const menuDepth = parseInt(process.env.NUXT_PUBLIC_MENU_DEPTH || '3', 10);
 // Set NUXT_PUBLIC_CHANNEL_ID per environment to the channel orders/quotes are
 // placed on. The account order/quote lists filter by `channelIds: [channelId]`,

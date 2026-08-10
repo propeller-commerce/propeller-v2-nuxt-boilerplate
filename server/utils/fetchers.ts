@@ -161,17 +161,26 @@ async function listingUserId(infra: ServerInfra): Promise<number | undefined> {
 }
 
 /**
- * Server-side base category: the explicitly configured
+ * The catalog root category: the explicitly configured
  * `NUXT_PUBLIC_BASE_CATEGORY_ID` / `BASE_CATEGORY_ID`, or — when none is
- * provided — the channel's catalog root. Falls back to `config.baseCategoryId`
- * (its own '17' default) if the channel exposes no root.
+ * provided — the channel's catalog root.
+ *
+ * The two are the only permitted sources; there is no literal fallback, because
+ * guessing an id that doesn't exist on this tenant surfaces to shoppers as an
+ * unexplained "Failed to load menu" (PWP-913).
+ *
+ * @throws when neither source yields an id.
  */
 export async function resolveBaseCategoryId(infra: ServerInfra): Promise<number> {
-  const raw = process.env.NUXT_PUBLIC_BASE_CATEGORY_ID || process.env.BASE_CATEGORY_ID;
-  const explicit = raw ? parseInt(raw, 10) : NaN;
-  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  if (baseCategoryId !== undefined) return baseCategoryId;
   const { catalogRootId } = await getChannelDefaults(infra.client, channelId);
-  return catalogRootId ?? baseCategoryId;
+  if (catalogRootId == null) {
+    throw new Error(
+      `No catalog root: channel ${channelId} exposes no catalogRootId and ` +
+        'NUXT_PUBLIC_BASE_CATEGORY_ID / BASE_CATEGORY_ID are unset. Set one of the two.'
+    );
+  }
+  return catalogRootId;
 }
 
 function resolveCompanyId(infra: ServerInfra): number | undefined {
@@ -406,8 +415,8 @@ function buildMenuCategoriesFragment(depth: number): string {
     categories {
       categoryId
       hidden
-      names(language: $language) { value language }
-      slugs(language: $language) { value }
+      names { value language }
+      slugs { value language }
       ${buildMenuCategoriesFragment(depth - 1)}
     }
   `;
@@ -415,7 +424,7 @@ function buildMenuCategoriesFragment(depth: number): string {
 
 function mapRawMenuCategory(raw: RawMenuCategory, language: string): MenuCategory {
   const nameEntry = raw.names?.find((n) => n.language === language) ?? raw.names?.[0];
-  const slugEntry = raw.slugs?.[0];
+  const slugEntry = raw.slugs?.find((s) => s.language === language) ?? raw.slugs?.[0];
   return {
     categoryId: raw.categoryId,
     name: nameEntry?.value ?? '',
@@ -442,12 +451,12 @@ export async function fetchMenu(
     bypass: !infra.cacheable,
     fetcher: async () => {
       const query = `
-        query Menu($categoryId: Float, $language: String) {
+        query Menu($categoryId: Float) {
           category(categoryId: $categoryId) {
             categoryId
             hidden
-            names(language: $language) { value language }
-            slugs(language: $language) { value }
+            names { value language }
+            slugs { value language }
             ${buildMenuCategoriesFragment(depth)}
           }
         }
@@ -455,7 +464,7 @@ export async function fetchMenu(
       try {
         const result = await infra.client.execute<{ category: RawMenuCategory | null }>({
           query,
-          variables: { categoryId: rootCategoryId, language: lang },
+          variables: { categoryId: rootCategoryId },
           operationName: 'Menu',
         });
         const root = result.data?.category ?? null;

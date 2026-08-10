@@ -45,7 +45,9 @@ export default defineNuxtConfig({
     boilerplateDefaultLanguage: process.env.BOILERPLATE_DEFAULT_LANGUAGE || 'NL',
     boilerplateCurrency: process.env.BOILERPLATE_CURRENCY || '€',
     revalidateSecret: process.env.REVALIDATE_SECRET || '',
-    baseCategoryId: process.env.BASE_CATEGORY_ID || '17',
+    // Env override only — the channel's catalogRootId is the fallback, resolved
+    // server-side by resolveBaseCategoryId(). No literal here (PWP-913).
+    baseCategoryId: process.env.BASE_CATEGORY_ID || '',
     channelId: process.env.CHANNEL_ID || '1',
 
     // ── Payments (Mollie PSP) — server-only ─────────────────────────────────
@@ -98,7 +100,9 @@ export default defineNuxtConfig({
       portalMode: process.env.NUXT_PUBLIC_PORTAL_MODE || 'open',
       currency: process.env.NUXT_PUBLIC_CURRENCY || '€',
       currencyCode: process.env.NUXT_PUBLIC_CURRENCY_CODE || 'EUR',
-      baseCategoryId: process.env.BASE_CATEGORY_ID || '17',
+      // Env override only — the channel's catalogRootId is the fallback, resolved
+    // server-side by resolveBaseCategoryId(). No literal here (PWP-913).
+    baseCategoryId: process.env.BASE_CATEGORY_ID || '',
       channelId: process.env.CHANNEL_ID || '1',
       urlPattern: process.env.NUXT_PUBLIC_URL_PATTERN || 'page/id/slug',
       menuDepth: process.env.NUXT_PUBLIC_MENU_DEPTH || '3',

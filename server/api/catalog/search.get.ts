@@ -1,10 +1,13 @@
 import { getListingInfra } from '../../utils/infra';
-import { fetchSearch } from '../../utils/fetchers';
+import { fetchSearch, resolveBaseCategoryId } from '../../utils/fetchers';
 
 export default defineEventHandler(async (event) => {
   const q = getQuery(event);
   const config = useRuntimeConfig(event);
-  const baseCategoryId = Number(config.baseCategoryId ?? config.public.baseCategoryId);
+  // Env override when configured, else the channel's catalog root (resolved
+  // below, once infra exists). Never a literal — an id that doesn't exist on
+  // this tenant is what produced "Failed to load menu" (PWP-913).
+  const configured = Number(config.baseCategoryId || config.public.baseCategoryId);
   const term = typeof q.term === 'string' ? q.term : '';
 
   const includeTaxParam = typeof q.includeTax === 'string' ? q.includeTax === '1' : undefined;
@@ -28,6 +31,11 @@ export default defineEventHandler(async (event) => {
       // ignore malformed JSON
     }
   }
+
+  const baseCategoryId =
+    Number.isFinite(configured) && configured > 0
+      ? configured
+      : await resolveBaseCategoryId(infra);
 
   return fetchSearch(infra, baseCategoryId, term, {
     page: q.page ? Number(q.page) : undefined,
