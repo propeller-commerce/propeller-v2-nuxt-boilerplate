@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.4] - 2026-08-11
+
+### Changed
+
+- `@propeller-commerce/propeller-v2-vue-ui` -> `^0.14.8`, catching up with three
+  package releases: overridable user-visible strings and modal close
+  accessibility (0.14.6), `OrderBonusItems` showing the netted price of a free
+  item rather than its list price (0.14.7), and quick order scoping its code
+  search to the shop's catalogue (0.14.8).
+
+  The 0.14.8 change makes `QuickOrder` depend on
+  `configuration.baseCategoryId`. Nuxt has no quick-order page and sets
+  `BASE_CATEGORY_ID` in its env, so nothing here needs rewiring — but see the
+  note below before removing that variable.
+
+### Known issues
+
+- `AppHeader` renders the category menu only when `configuration.baseCategoryId`
+  is defined, which is the `BASE_CATEGORY_ID` env override. A shop that leaves it
+  unset — the channel-driven default everywhere else since PWP-913 — gets no menu
+  at all, even though `/api/catalog/menu` resolves the root server-side and
+  returns a usable tree. Nuxt is the only stack that still needs the variable.
+
 ## [1.8.3] - 2026-08-10
 
 ### Fixed
