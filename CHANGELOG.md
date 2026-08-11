@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.5] - 2026-08-11
+
+### Fixed
+
+- **Checkout step 3 opened with nothing selected on a fresh cart (PWP-934).**
+  The payment-method and carrier grids only restored a value the cart already
+  stored, so a first-time cart rendered both blank and Continue rejected the
+  step until the user clicked. vue-ui 0.14.10 preselects the stored option when
+  there is one and otherwise the first one offered. It also fixes "on account"
+  never being hidden from guests, which would have won that preselection, and
+  moves the upward notification off an `immediate` watch so it no longer fires
+  during SSR.
+
 ## [1.8.4] - 2026-08-11
 
 ### Changed
