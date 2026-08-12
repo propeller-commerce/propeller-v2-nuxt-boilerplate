@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.6] - 2026-08-12
+
+### Fixed
+
+- **Product, cluster and autosuggest links used default-language slugs
+  (PWP-940).** vue-ui 0.15.0 resolves the slugs behind `OrderItemCard`'s item
+  link and `SearchBar`'s result links by the active language. Names were
+  already correct; the slugs were not, so every non-default locale emitted
+  wrong-language URLs.
+- **"Request authorization" in the cart sidebar did nothing (PWP-937 /
+  PWP-938).** `useCart` unwrapped the caller's cart id once at setup, so the
+  header sidebar — created before the cart resolves — held an empty id for the
+  life of the page and the request never left the browser.
+
+### Changed
+
+- The favorites list's add-product button now reads "Add product to favorite
+  list" / "Voeg product toe aan favorietenlijst" (PWP-939).
+
 ## [1.8.5] - 2026-08-11
 
 ### Fixed
