@@ -12,7 +12,7 @@ import { configuration } from '~/utils/config';
  * (server-only env, never reaches the bundle). On the client it targets
  * `/api/graphql` (the proxy injects apikey server-side).
  */
-export default defineNuxtPlugin((nuxtApp) => {
+export default defineNuxtPlugin(async (nuxtApp) => {
   const config = useRuntimeConfig();
 
   const endpoint = import.meta.server
@@ -44,11 +44,31 @@ export default defineNuxtPlugin((nuxtApp) => {
   const graphqlClient = new GraphQLClient(clientConfig);
   const services = createServices(graphqlClient);
 
+  // The channel's anonymous user: resolved once during SSR (only the server
+  // can reach the channel) and carried to the browser in the Nuxt payload, so
+  // client-side listing queries scope exactly as the SSR seed did. Same route
+  // the catalog root takes — no module guesses it (PWP-942 #22).
+  const anonymousUserId = useState<number | undefined>('propeller:anonymousUserId');
+  if (import.meta.server && anonymousUserId.value === undefined) {
+    try {
+      const defaults = await $fetch('/api/catalog/channel-defaults');
+      anonymousUserId.value = defaults.anonymousUserId;
+    } catch {
+      // Non-fatal: without it, logged-out client queries fall back to the
+      // api key's own scope, which is the behaviour that predates this.
+    }
+  }
+
   nuxtApp.vueApp.use(propellerVue, {
     graphqlClient,
     services,
     currency: config.public.currency,
-    configuration,
+    configuration: {
+      ...configuration,
+      get anonymousUserId() {
+        return anonymousUserId.value;
+      },
+    },
   });
 
   return {
