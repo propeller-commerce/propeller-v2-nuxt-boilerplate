@@ -2,6 +2,8 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Company } from '@propeller-commerce/propeller-sdk-v2';
 import { isBrowser, safeStorage } from '~/utils/ssr';
+import { track } from '~/lib/tracking/bus';
+import { refreshTrackingContext } from '~/lib/tracking/bootstrap';
 
 const STORAGE_KEY = 'selected_company';
 const COOKIE_KEY = 'selected_company_id';
@@ -30,6 +32,19 @@ export const useCompanyStore = defineStore('company', () => {
   const companyId = computed(() => selectedCompany.value?.companyId ?? null);
 
   function setSelectedCompany(company: Company) {
+    const previousId = selectedCompany.value?.companyId ?? null;
+    // Only a real change is a switch. `setSelectedCompany` is also how the
+    // login flow seeds the contact's default company, and counting that as a
+    // switch would make every B2B login look like a company change.
+    if (previousId !== company.companyId) {
+      track(
+        'propeller.company_switched',
+        { from_company_id: previousId, to_company_id: company.companyId },
+        `company_switched:${previousId}:${company.companyId}:${Math.floor(Date.now() / 2000)}`
+      );
+      // Everything after this point belongs to the new company.
+      refreshTrackingContext();
+    }
     selectedCompany.value = company;
     safeStorage.setItem(STORAGE_KEY, JSON.stringify(company));
     writeCompanyCookie(company.companyId);

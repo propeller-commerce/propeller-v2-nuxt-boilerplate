@@ -115,6 +115,7 @@ import { useAuthStore } from '~/stores/auth';
 import { useCompanyStore } from '~/stores/company';
 import { COUNTRIES } from '~/utils/countries';
 import { useTranslations } from '~/composables/useTranslations';
+import { track } from '~/lib/tracking/bus';
 
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
@@ -183,18 +184,43 @@ function handleAddAddress(type: AddressType) {
   showAddModal.value = true;
 }
 
+/**
+ * Address events carry `owner_type` because the composable branches on company
+ * vs customer input, so the two are genuinely different signals.
+ */
+function trackAddress(name: string, address: { id?: unknown; type?: unknown }) {
+  track(
+    name,
+    {
+      address_id: address?.id != null ? Number(address.id) : null,
+      address_type: (address?.type as string) ?? null,
+      owner_type: isContact(authStore.user as Contact | Customer | null) ? 'company' : 'customer',
+    },
+    `${name}:${address?.id ?? 'new'}:${Math.floor(Date.now() / 2000)}`
+  );
+}
+
 async function handleEditAddress(address: Address) {
   const result = await updateAddress(Number(address.id), address as Partial<AddressInput>);
-  if (result.success) await authStore.refreshUser();
+  if (result.success) {
+    trackAddress('propeller.address_updated', address);
+    await authStore.refreshUser();
+  }
 }
 async function handleDeleteAddress(address: Address) {
   const result = await deleteAddress(Number(address.id));
-  if (result.success) await authStore.refreshUser();
+  if (result.success) {
+    trackAddress('propeller.address_deleted', address);
+    await authStore.refreshUser();
+  }
 }
 async function handleSetDefault(address: Address) {
   if (!address.id) return;
   const result = await setDefaultAddress(Number(address.id));
-  if (result.success) await authStore.refreshUser();
+  if (result.success) {
+    trackAddress('propeller.address_default_changed', address);
+    await authStore.refreshUser();
+  }
 }
 async function handleSaveNewAddress(address: any) {
   const result = await createAddress({
@@ -215,6 +241,7 @@ async function handleSaveNewAddress(address: any) {
     type: addModalType.value,
   });
   if (result.success) {
+    trackAddress('propeller.address_created', { type: addModalType.value });
     await authStore.refreshUser();
     showAddModal.value = false;
   }

@@ -381,6 +381,7 @@ const navLinks = computed(() => {
     { label: 'Sale', url: '/sale', highlight: true },
   ];
   if (isContact.value) {
+    links.unshift({ label: 'Quick order', url: '/quick-order', highlight: false });
     links.unshift({ label: 'Machines', url: '/machines', highlight: false });
   }
   return links;

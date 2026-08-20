@@ -34,6 +34,7 @@ import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref } from '~/utils/config';
 import { COUNTRIES_MAP } from '~/utils/countries';
 import { useTranslations } from '~/composables/useTranslations';
+import { track } from '~/lib/tracking/bus';
 
 const registerFormLabels = useTranslations('RegisterForm');
 
@@ -59,10 +60,27 @@ async function handleAfterRegistration(
   expiresAt?: string,
   anonymousCart?: Cart | null
 ) {
+  // `registration_submitted` covers BOTH outcomes; `sign_up` only the one that
+  // ends signed in. Keeping them separate is what makes "how many registrations
+  // need manual approval" answerable — with one event it is not.
+  const accountType = (user as Contact).contactId != null ? 'contact' : 'customer';
+  track(
+    'registration_submitted',
+    { account_type: accountType, requires_approval: !accessToken },
+    `registration_submitted:${accountType}:${Math.floor(Date.now() / 5000)}`
+  );
+
   if (!accessToken) {
     router.push(localizeHref('/login', languageStore.language));
     return;
   }
+
+  track(
+    'sign_up',
+    { method: 'password', account_type: accountType },
+    `sign_up:${accountType}:${Math.floor(Date.now() / 5000)}`
+  );
+  track('login', { method: 'password' }, `login:password:${Date.now()}`);
 
   authStore.setUser(user);
   authStore.setToken(accessToken);

@@ -18,6 +18,8 @@ import { useCartStore } from '~/stores/cart'
 import { useCompanyStore } from '~/stores/company'
 import { useLanguageStore } from '~/stores/language'
 import { configuration } from '~/utils/config'
+import { track } from '~/lib/tracking/bus'
+import { refreshTrackingContext, trackIdentify } from '~/lib/tracking/bootstrap'
 
 export function useAfterLogin() {
   const { $graphqlClient } = useNuxtApp()
@@ -41,6 +43,8 @@ export function useAfterLogin() {
     refreshToken?: string,
     expiresAt?: string,
     anonymousCart?: Cart | null,
+    /** How the session was authenticated — 'password' or 'magic_token'. */
+    method: string = 'password',
   ): Promise<{ effectiveLanguage: string }> {
     authStore.setUser(user)
     if (accessToken) {
@@ -95,6 +99,22 @@ export function useAfterLogin() {
     }
 
     cartStore.setCart(targetCart ?? null)
+
+    // Emitted HERE, explicitly, and never from a `watch(isAuthenticated)`: that
+    // watcher runs with `{ immediate: true }` on every store construction, so it
+    // would report a login on every page load of an already-signed-in visitor.
+    track('login', { method }, `login:${method}:${Date.now()}`)
+    // Re-publish scope so everything after this point carries the contact,
+    // company and mode — the bootstrap's snapshot was taken while anonymous.
+    refreshTrackingContext()
+    const contactId = (user as Contact).contactId ?? null
+    trackIdentify({
+      userMode: contactId != null ? 'b2b' : 'b2c',
+      contactId,
+      customerId: contactId != null ? null : ((user as Customer).customerId ?? null),
+      companyId: companyStore.selectedCompany?.companyId ?? null,
+      language: languageStore.language?.slice(0, 2).toUpperCase() ?? null,
+    })
 
     return { effectiveLanguage: userLang || languageStore.language }
   }

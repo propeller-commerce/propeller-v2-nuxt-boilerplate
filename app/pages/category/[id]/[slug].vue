@@ -92,9 +92,9 @@
               :onProductsResponse="handleProductsResponse"
               :onCategoryChange="handleCategoryChange"
               :onCartCreated="(cart: Cart) => cartStore.setCart(cart)"
-              :afterAddToCart="(cart: Cart) => cartStore.setCart(cart)"
-              :onProductClick="(product: Product) => router.push(configuration.urls.getProductUrl(product, languageStore.language))"
-              :onClusterClick="(cluster: Cluster) => router.push(configuration.urls.getClusterUrl(cluster, languageStore.language))"
+              :afterAddToCart="handleAddToCart"
+              :onProductClick="handleProductClick"
+              :onClusterClick="handleClusterClick"
               :onProceedToCheckout="() => router.push(localizeHref('/checkout', languageStore.language))"
               :onRequestQuoteClick="() => router.push(localizeHref('/checkout?mode=quote', languageStore.language))"
               :labels="productGridLabels"
@@ -133,6 +133,7 @@ import {
   type AttributeFilter,
   AttributeType,
   type Cart,
+  type CartMainItem,
   type Category,
   type Cluster,
   type Product,
@@ -166,6 +167,8 @@ import {
 } from '~/utils/seo';
 import { useTranslations } from '~/composables/useTranslations';
 import { useListingParams } from '~/composables/useCatalogListing';
+import { track } from '~/lib/tracking/bus';
+import { trackAddToCart, trackSelectItem, trackViewItemList } from '~/lib/tracking/events';
 
 const route = useRoute();
 const router = useRouter();
@@ -374,6 +377,70 @@ useHead({
   ],
   link: computed(() => (seoCanonical.value ? [{ rel: 'canonical', href: seoCanonical.value }] : [])),
 });
+
+// ── Category tracking (PWP-910) ──────────────────────────────────────────────
+//
+// The surface this page represents. Passed into the grid callbacks so an
+// add-to-cart from a category listing is distinguishable from the same product
+// added on its PDP.
+const categorySource = computed(() => ({
+  type: 'category' as const,
+  id: Number.isFinite(categoryId.value) ? categoryId.value : null,
+  name: categoryName.value || null,
+  page: currentPage.value,
+}));
+
+// Self-reported `page_viewed` — carries the entity id and name, which is why
+// the generic router hook skips this route (`lib/tracking/pageType.ts`).
+watch(
+  [categoryId, categoryName],
+  () => {
+    if (!Number.isFinite(categoryId.value)) return;
+    track(
+      'page_viewed',
+      {
+        page_type: 'category',
+        entity_type: 'category',
+        entity_id: categoryId.value,
+        entity_name: categoryName.value || null,
+      },
+      `page_viewed:category:${categoryId.value}`
+    );
+  },
+  { immediate: true }
+);
+
+watch(
+  [productsResponse, itemsFound, currentPage],
+  () => {
+    if (filtersLoading.value || productsResponse.value === null) return;
+    trackViewItemList(
+      categorySource.value,
+      itemsFound.value,
+      seededItems.value.length,
+      seededItems.value,
+      { language: languageStore.language, offset: productsResponse.value?.offset }
+    );
+  },
+  { immediate: true }
+);
+
+function handleAddToCart(cart: Cart, item?: CartMainItem) {
+  cartStore.setCart(cart);
+  trackAddToCart(categorySource.value, item, cart, null, languageStore.language);
+}
+
+function handleProductClick(product: Product) {
+  // Before the navigation, not after: `router.push` tears this page down and
+  // the bus's flush timer does not wait for the unmount.
+  trackSelectItem(categorySource.value, product, null, languageStore.language);
+  router.push(configuration.urls.getProductUrl(product, languageStore.language));
+}
+
+function handleClusterClick(cluster: Cluster) {
+  trackSelectItem(categorySource.value, cluster, null, languageStore.language);
+  router.push(configuration.urls.getClusterUrl(cluster, languageStore.language));
+}
 
 function handleFiltersChange(f: AttributeFilter[]) { gridFilters.value = f; }
 function handleItemsFoundChange(count: number) { itemsFound.value = count; }

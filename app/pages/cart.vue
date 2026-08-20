@@ -24,7 +24,7 @@
               :showCrossupsells="true"
               :crossupsellTypes="[CrossupsellType.ACCESSORIES]"
               :crossupsellLimit="2"
-              :afterCartUpdate="(cart: any) => cartStore.setCart(cart)"
+              :afterCartUpdate="handleCartUpdate"
               :labels="cartItemLabels"
             />
             <CartBonusItems :cart="cartStore.cart as Cart" :labels="cartBonusItemsLabels" />
@@ -85,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { type Cart, CrossupsellType } from '@propeller-commerce/propeller-sdk-v2';
 import { ActionCode, CartBonusItems, CartItem, CartSummary } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useCartStore } from '~/stores/cart';
@@ -93,6 +93,10 @@ import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';
 import { restoreManagerCart } from '~/utils/cartHelpers';
 import { useTranslations } from '~/composables/useTranslations';
+import { track } from '~/lib/tracking/bus';
+// `cartItems` is already taken in this file by the template's own computed —
+// alias rather than rename the template binding.
+import { cartItems as cartGa4Items, cartValue, trackCartDiff } from '~/lib/tracking/events';
 
 const cartItemLabels = useTranslations('CartItem');
 const cartBonusItemsLabels = useTranslations('CartBonusItems');
@@ -112,9 +116,69 @@ onMounted(() => {
 });
 
 function afterRequestAuthorization(cart: Cart) {
+  track(
+    'propeller.purchase_authorization_requested',
+    {
+      cart_id: cart?.cartId ?? null,
+      value: cartValue(cart),
+      item_count: cart?.items?.length ?? 0,
+    },
+    `purchase_authorization_requested:${cart?.cartId ?? ''}`
+  );
   cartStore.setCart(restoreManagerCart());
   router.push(localizeHref(`/authorization-request-sent/${cart.cartId}`, languageStore.language));
 }
+
+// ── Cart tracking (PWP-910) ──────────────────────────────────────────────────
+//
+// A plain `let`, deliberately NOT a ref and NOT `cartStore.cart`: the package
+// may hand back the same cart object mutated in place, and an identity match
+// would make the diff come out empty — losing every add and remove silently.
+let previousCart: Cart | null = null;
+
+/**
+ * Shallow-clones each line so `quantity` — the one field the diff reads and the
+ * one field mutated in place — is captured by value at snapshot time.
+ */
+const snapshot = (cart: Cart | null): Cart | null =>
+  cart ? ({ ...cart, items: (cart.items ?? []).map((line) => ({ ...line })) } as Cart) : null;
+
+/**
+ * `<CartItem>` exposes ONE callback for every mutation — add, remove and
+ * quantity edit alike — so provenance has to come from comparing snapshots.
+ *
+ * Scope is deliberately cart-page-only, matching propeller-next: the PDP,
+ * search and category pages emit their own `add_to_cart` with real provenance,
+ * so a global cart subscriber would double-count every one of them.
+ */
+function handleCartUpdate(cart: Cart) {
+  trackCartDiff(previousCart, cart, languageStore.language);
+  previousCart = snapshot(cart);
+  cartStore.setCart(cart);
+}
+
+watch(
+  () => [cartStore.cart?.cartId, cartStore.cart?.items?.length] as const,
+  () => {
+    const cart = cartStore.cart as Cart | null;
+    track('page_viewed', { page_type: 'cart' }, 'page_viewed:cart');
+    const count = cart?.items?.length ?? 0;
+    track(
+      'view_cart',
+      // `cartValue` reads `totalGross`, which is the EX-VAT total in this SDK.
+      // `totalNet` is tax-INCLUSIVE — sending it would inflate GA4 revenue by
+      // the VAT rate against every other event in the funnel.
+      { item_count: count, value: cartValue(cart), items: cartGa4Items(cart, languageStore.language) },
+      `view_cart:${cart?.cartId ?? 'empty'}:${count}`
+    );
+    // Re-baseline here, not only on mount: `hydrate-stores.client.ts` restores
+    // the cart from localStorage AFTER this page's setup, so a snapshot taken
+    // at mount would be empty and the user's first edit would diff against
+    // nothing — emitting a spurious `add_to_cart` for every line already there.
+    previousCart = snapshot(cart);
+  },
+  { immediate: true }
+);
 
 useHead({ title: 'Shopping Cart' });
 </script>

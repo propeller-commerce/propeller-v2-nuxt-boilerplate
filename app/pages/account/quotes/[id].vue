@@ -123,6 +123,7 @@ import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref } from '~/utils/config';
 import { COUNTRIES } from '~/utils/countries';
 import { useTranslations } from '~/composables/useTranslations';
+import { track } from '~/lib/tracking/bus';
 import AccessErrorView from '~/components/access/AccessErrorView.vue';
 import { classifyApiError } from '~/lib/errors';
 
@@ -176,6 +177,17 @@ const childMap = computed(() => {
 });
 
 function handleAfterAccept(acceptedQuote: any) {
+  // The conversion event for the quote funnel — this is where a quote becomes
+  // an order, so it is the one number the "quotes sent vs accepted" ratio needs.
+  track(
+    'propeller.quote_accepted',
+    {
+      quote_id: Number(acceptedQuote?.id) || null,
+      value: acceptedQuote?.total?.gross ?? null,
+      item_count: acceptedQuote?.items?.length ?? 0,
+    },
+    `quote_accepted:${acceptedQuote?.id ?? ''}`
+  );
   router.push(localizeHref(`/checkout/thank-you/${acceptedQuote.id}`, languageStore.language));
 }
 
@@ -196,6 +208,11 @@ async function handleDownloadPDF() {
   downloading.value = true;
   try {
     const result = await downloadQuotePdf(Number(quoteId));
+    track(
+      'propeller.order_pdf_downloaded',
+      { order_id: Number(quoteId) || null, doc_type: 'quote' },
+      `order_pdf_downloaded:quote:${quoteId}:${Math.floor(Date.now() / 2000)}`
+    );
     if (result?.success) showDownloadToast('PDF downloaded successfully', 'success');
     else showDownloadToast(result?.error || 'Failed to download PDF', 'error');
   } catch (e) {
@@ -208,6 +225,17 @@ async function handleDownloadPDF() {
 
 onMounted(async () => {
   await fetchOrder(parseInt(quoteId));
+  const current = quote.value as any;
+  if (!current) return;
+  track(
+    'propeller.quote_viewed',
+    {
+      order_id: Number(quoteId) || null,
+      value: current.total?.net ?? null,
+      order_status: current.status ?? null,
+    },
+    `quote_viewed:${quoteId}`
+  );
 });
 
 useHead(() => ({ title: `Quote #${quoteId}` }));

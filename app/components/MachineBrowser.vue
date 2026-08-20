@@ -17,7 +17,7 @@
           :configuration="machineConfiguration"
           :cartId="cartStore.cartId || undefined"
           :onCartCreated="(cart: Cart) => cartStore.setCart(cart)"
-          :afterAddToCart="(cart: Cart) => cartStore.setCart(cart)"
+          :afterAddToCart="handleAddToCart"
           :onProductClick="onProductClick"
           :paginationLabels="paginationLabels"
           :filtersLabels="filtersLabels"
@@ -42,7 +42,7 @@
  * package's <MachineGrid>. Mirrors propeller-next's machines page + propeller-vue's
  * MachinesView. Auth is enforced by the pages' `middleware: 'auth'`.
  */
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import type { Cart, Product } from '@propeller-commerce/propeller-sdk-v2';
 import { MachineGrid, type MachineListingState } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
@@ -58,6 +58,8 @@ import {
 } from '~/utils/machines';
 import { useListingParams, buildListingQuery } from '~/composables/useCatalogListing';
 import { useTranslations } from '~/composables/useTranslations';
+import { track } from '~/lib/tracking/bus';
+import { trackAddToCart } from '~/lib/tracking/events';
 
 const route = useRoute();
 const router = useRouter();
@@ -77,6 +79,39 @@ const segments = computed<string[]>(() => {
 });
 // WP silently 404s past the last rewrite rule; be explicit.
 const tooDeep = computed(() => segments.value.length > MACHINE_MAX_DEPTH);
+
+// `machine_viewed` at the tree root, `spare_part_viewed` once the user has
+// drilled into a node — the DEPTH is the distinction, and only the second is a
+// parts-demand signal a rep can act on (PWP-910).
+watch(
+  segments,
+  (parts) => {
+    const name = parts.length > 1 ? 'propeller.spare_part_viewed' : 'propeller.machine_viewed';
+    track(
+      name,
+      {
+        machine_id: parts[0] ?? null,
+        node_id: parts[parts.length - 1] ?? null,
+        depth: parts.length,
+      },
+      `${name}:${parts.join('/') || 'root'}`
+    );
+  },
+  { immediate: true }
+);
+
+function handleAddToCart(cart: Cart, item?: any) {
+  cartStore.setCart(cart);
+  // Source `machine` — a spare part added from a machine's parts tree is a
+  // different intent from the same SKU added off a category listing.
+  trackAddToCart(
+    { type: 'machine', name: segments.value.join('/') || null },
+    item,
+    cart,
+    null,
+    languageStore.language
+  );
+}
 
 // Machine source/language come from runtimeConfig.public (correct on the client).
 // app/utils/config.ts's process.env reads are undefined in the browser bundle.
