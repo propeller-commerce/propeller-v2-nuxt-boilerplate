@@ -13,7 +13,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck",
-    "clean": "powershell -Command \"Remove-Item -Recurse -Force .nuxt -ErrorAction SilentlyContinue"
+    "clean": "powershell -Command \"Remove-Item -Recurse -Force .nuxt -ErrorAction SilentlyContinue",
+    "test:tracking": "node --test --experimental-strip-types app/lib/tracking/*.test.ts"
   },
   "dependencies": {
     "@nuxtjs/i18n": "^9.5.0",
