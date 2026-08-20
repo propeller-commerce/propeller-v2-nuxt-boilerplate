@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.7] - 2026-08-20
+
+### Added
+
+- **The channel's anonymous user is handed to the client (PWP-942 #22).** A new
+  `/api/catalog/channel-defaults` route exposes it (the channel query needs the
+  api key, so only the server can resolve it), the propeller plugin fetches it
+  once during SSR and carries it to the browser in the Nuxt payload, and it is
+  exposed on the package `configuration`. Anonymous SSR and the client refetch
+  now scope catalog queries identically; previously the client asked an
+  unscoped question and quietly replaced a correctly-scoped product list with a
+  different one.
+
+### Fixed
+
+- **A bad endpoint or api key was reported as a channel-config problem, and
+  memoised (PWP-942 #9).** `getChannelDefaults` swallowed every failure into
+  `{}`, so a DNS failure, a 401 and "this channel has no catalogRootId" were
+  indistinguishable downstream — and the empty result was cached for the full
+  TTL. It now throws with context, and the memo is never written on the failure
+  path, so the next request retries.
+
 ## [1.8.6] - 2026-08-12
 
 ### Fixed
