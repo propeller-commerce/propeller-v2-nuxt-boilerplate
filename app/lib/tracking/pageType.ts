@@ -73,6 +73,10 @@ export function classifyRoute(
 
   if (route.startsWith('csr-')) return null;
   if (SELF_REPORTING.has(route)) return null;
+  // The analytics dashboard itself. Tracking it would put staff page views in
+  // the same table as customer behaviour, on the one page guaranteed to be
+  // opened by staff.
+  if (route === 'tracker') return null;
 
   const direct = BY_NAME[route];
   if (direct) return { pageType: direct, entityId: null };
