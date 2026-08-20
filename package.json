@@ -14,7 +14,8 @@
     "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck",
     "clean": "powershell -Command \"Remove-Item -Recurse -Force .nuxt -ErrorAction SilentlyContinue",
-    "test:tracking": "node --test --experimental-strip-types app/lib/tracking/*.test.ts"
+    "test:tracking": "node --test --experimental-strip-types app/lib/tracking/*.test.ts",
+    "tracking:init": "node --experimental-strip-types scripts/tracking-init.ts"
   },
   "dependencies": {
     "@nuxtjs/i18n": "^9.5.0",
@@ -30,6 +31,7 @@
     "lodash.debounce": "^4.0.8",
     "lucide-vue-next": "^0.469.0",
     "marked": "^18.0.0",
+    "mysql2": "^3.23.4",
     "pinia": "^2.2.0",
     "qs": "^6.15.0",
     "swiper": "^12.1.3",

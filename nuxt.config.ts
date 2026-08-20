@@ -44,6 +44,19 @@ export default defineNuxtConfig({
     boilerplatePortalMode: process.env.BOILERPLATE_PORTAL_MODE || 'open',
     boilerplateDefaultLanguage: process.env.BOILERPLATE_DEFAULT_LANGUAGE || 'NL',
     boilerplateCurrency: process.env.BOILERPLATE_CURRENCY || '€',
+    // ── Behaviour tracking (PWP-910) ──────────────────────────────────────
+    // Server-only. NEVER move these into `public` — that would ship the
+    // database credentials to the browser.
+    trackingEnabled: process.env.TRACKING_ENABLED || '',
+    trackingDbUrl: process.env.TRACKING_DB_URL || '',
+    trackingDbSocket: process.env.TRACKING_DB_SOCKET || '',
+    trackingDbHost: process.env.TRACKING_DB_HOST || '',
+    trackingDbPort: process.env.TRACKING_DB_PORT || '',
+    trackingDbUser: process.env.TRACKING_DB_USER || '',
+    trackingDbPassword: process.env.TRACKING_DB_PASSWORD || '',
+    trackingDbName: process.env.TRACKING_DB_NAME || '',
+    trackingDbSsl: process.env.TRACKING_DB_SSL || '',
+    trackingTimezone: process.env.TRACKING_TIMEZONE || 'Europe/Amsterdam',
     revalidateSecret: process.env.REVALIDATE_SECRET || '',
     // Env override only — the channel's catalogRootId is the fallback, resolved
     // server-side by resolveBaseCategoryId(). No literal here (PWP-913).
@@ -125,6 +138,11 @@ export default defineNuxtConfig({
       // server-only above). Mirrors propeller-vue's VITE_PAYMENT_PROVIDER /
       // VITE_ON_ACCOUNT_PAYMENTS. The server route re-applies the on-account
       // rule against the server-only `onAccountPayments` as defense in depth.
+      // Tracking + GA4, client-visible. Strings on purpose — see above.
+      trackingEnabled: process.env.NUXT_PUBLIC_TRACKING_ENABLED || '',
+      useGa4: process.env.NUXT_PUBLIC_USE_GA4 || '',
+      ga4Key: process.env.NUXT_PUBLIC_GA4_KEY || '',
+      gtmKey: process.env.NUXT_PUBLIC_GTM_KEY || '',
       paymentProvider: process.env.NUXT_PUBLIC_PAYMENT_PROVIDER || '',
       onAccountPayments: process.env.NUXT_PUBLIC_ON_ACCOUNT_PAYMENTS || '',
     },
