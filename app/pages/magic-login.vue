@@ -31,6 +31,7 @@ import { useAuth } from '@propeller-commerce/propeller-v2-vue-ui';
 import { configuration, localizeHref } from '~/utils/config';
 import { useLanguageStore } from '~/stores/language';
 import { useAfterLogin } from '~/composables/useAfterLogin';
+import { track } from '~/lib/tracking/bus';
 
 const router = useRouter();
 const route = useRoute();
@@ -64,11 +65,22 @@ onMounted(async () => {
     return;
   }
 
+  // A magic token is how a punchout buyer arrives from their procurement
+  // system, so the session start is worth its own event — `login` alone cannot
+  // distinguish it from someone typing a password.
+  track(
+    'propeller.punchout_session_started',
+    { method: 'magic_token', redirect: redirect || '/' },
+    `punchout_session_started:${token.slice(0, 12)}`
+  );
+
   const { effectiveLanguage } = await runAfterLogin(
     res.data.user,
     res.data.accessToken,
     res.data.refreshToken,
     res.data.expiresAt,
+    null,
+    'magic_token',
   );
   router.replace(redirect || localizeHref('/', effectiveLanguage));
 });

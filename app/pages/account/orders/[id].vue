@@ -36,7 +36,7 @@
             :order="order as any"
             :cartId="cartStore.cartId || undefined"
             :onCartCreated="(cart: Cart) => cartStore.setCart(cart)"
-            :afterReorder="(cart: Cart) => cartStore.setCart(cart)"
+            :afterReorder="handleReorder"
             :labels="orderActionsLabels"
           />
         </div>
@@ -78,7 +78,7 @@
             :order="order as any"
             :cartId="cartStore.cartId || undefined"
             :onCartCreated="(cart: any) => cartStore.setCart(cart)"
-            :afterReorder="(cart: any) => cartStore.setCart(cart)"
+            :afterReorder="handleReorder"
             :labels="orderActionsLabels"
           />
           <OrderTotals
@@ -117,6 +117,8 @@ import { useLanguageStore } from '~/stores/language';
 import { configuration } from '~/utils/config';
 import { COUNTRIES } from '~/utils/countries';
 import { useTranslations } from '~/composables/useTranslations';
+import { track } from '~/lib/tracking/bus';
+import { orderItems } from '~/lib/tracking/events';
 import AccessErrorView from '~/components/access/AccessErrorView.vue';
 import { classifyApiError } from '~/lib/errors';
 
@@ -162,8 +164,41 @@ const childMap = computed(() => {
   return map;
 });
 
+function handleReorder(cart: any) {
+  cartStore.setCart(cart);
+  // A reorder is the strongest repeat-purchase signal in the account area:
+  // it says the assortment worked, without needing a new search.
+  track(
+    'propeller.reorder_started',
+    {
+      source_order_id: Number(route.params.id) || null,
+      item_count: (order.value as any)?.items?.length ?? 0,
+      value: (order.value as any)?.total?.gross ?? null,
+      items: orderItems(order.value as never, languageStore.language),
+    },
+    `reorder_started:${route.params.id}:${Math.floor(Date.now() / 2000)}`
+  );
+}
+
 onMounted(async () => {
   await fetchOrder(parseInt(route.params.id as string));
+  const current = order.value as any;
+  if (!current) return;
+  const placed = Date.parse(String(current.orderDate ?? ''));
+  track(
+    'propeller.order_viewed',
+    {
+      order_id: Number(route.params.id) || null,
+      order_status: current.status ?? null,
+      // `gross` is the EX-VAT total in this SDK — see lib/tracking/items.ts.
+      value: current.total?.gross ?? null,
+      item_count: current.items?.length ?? 0,
+      // How long after placing it the customer came back to look. A short tail
+      // is order-tracking; a long one is usually a reorder about to happen.
+      age_days: Number.isNaN(placed) ? null : Math.floor((Date.now() - placed) / 86_400_000),
+    },
+    `order_viewed:${route.params.id}`
+  );
 });
 
 useHead(() => ({ title: `Order #${route.params.id}` }));

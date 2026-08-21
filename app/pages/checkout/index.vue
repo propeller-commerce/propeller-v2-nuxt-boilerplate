@@ -298,6 +298,8 @@ import { COUNTRIES } from '~/utils/countries';
 import { restoreManagerCart } from '~/utils/cartHelpers';
 import { isOnAccountMethod, activePspProvider, pspApiBase, pspStashKey } from '~/utils/payments';
 import { useTranslations } from '~/composables/useTranslations';
+import { track } from '~/lib/tracking/bus';
+import { cartItems as cartGa4Items, cartValue } from '~/lib/tracking/events';
 
 const addressCardLabels = useTranslations('AddressCard');
 const addressSelectorLabels = useTranslations('AddressSelector');
@@ -487,6 +489,33 @@ watch(
   { immediate: true }
 );
 
+// ── Checkout tracking (PWP-910) ──────────────────────────────────────────────
+//
+// `begin_checkout` once per CART, deliberately not per step transition: step 3
+// auto-advances when there is only one payment method (the watcher just above),
+// so keying on the step would double-count exactly the carts that convert
+// fastest.
+watch(
+  () => (cart.value as any)?.cartId as string | undefined,
+  (cartId) => {
+    if (!cartId) return;
+    track(
+      'begin_checkout',
+      {
+        // `cartValue` reads `totalGross` — the EX-VAT total in this SDK.
+        value: cartValue(cart.value as Cart | null),
+        item_count: (cart.value as any)?.items?.length ?? 0,
+        items: cartGa4Items(cart.value as Cart | null, languageStore.language),
+        coupon: (cart.value as any)?.actionCode ?? null,
+        is_quote_mode: isQuoteMode.value,
+      },
+      `begin_checkout:${cartId}`
+    );
+    track('page_viewed', { page_type: 'checkout' }, `page_viewed:checkout:${cartId}`);
+  },
+  { immediate: true }
+);
+
 // Persist the payment method the moment it is picked, so the order summary
 // shows THIS method's transaction costs instead of the previously stored
 // method's (PWP-930) — the totals used to only refresh on Continue, which made
@@ -498,7 +527,18 @@ async function handlePaymethodSelect(code: string) {
   if (!c?.cartId || c.paymentData?.method === code) return;
   try {
     const updatedCart = await updateCartSettings(c.cartId, { paymentMethod: code });
-    if (updatedCart) cartStore.setCart(updatedCart);
+    if (updatedCart) {
+      cartStore.setCart(updatedCart);
+      track(
+        'add_payment_info',
+        {
+          payment_type: code,
+          value: cartValue(updatedCart),
+          items: cartGa4Items(updatedCart, languageStore.language),
+        },
+        `add_payment_info:${c.cartId}:${code}`
+      );
+    }
   } catch (e) {
     // Non-fatal: the totals stay stale, but Continue re-sends the method.
     console.error('[checkout] persist payment method failed:', e);
@@ -519,6 +559,15 @@ async function handleStep3Continue() {
   if (updatedCart) {
     cartStore.setCart(updatedCart);
     currentStep.value = 4;
+    track(
+      'add_shipping_info',
+      {
+        shipping_tier: selectedCarrier.value ?? null,
+        value: cartValue(updatedCart),
+        items: cartGa4Items(updatedCart, languageStore.language),
+      },
+      `add_shipping_info:${(cart.value as any).cartId}:${selectedCarrier.value ?? ''}`
+    );
   }
 }
 

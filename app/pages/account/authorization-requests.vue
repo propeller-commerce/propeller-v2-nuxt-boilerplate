@@ -7,6 +7,7 @@
       <PurchaseAuthorizationRequests
         v-if="authStore.user && isContact(authStore.user) && companyStore.companyId"
         :afterAcceptRequest="handleAfterAccept"
+        :afterDeleteRequest="handleAfterReject"
         :labels="purchaseAuthorizationRequestsLabels"
       />
     </ClientOnly>
@@ -23,6 +24,7 @@ import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';
 import { parkManagerCart } from '~/utils/cartHelpers';
 import { useTranslations } from '~/composables/useTranslations';
+import { track } from '~/lib/tracking/bus';
 
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
@@ -37,7 +39,31 @@ function isContact(u: Contact | Customer | null): u is Contact {
   return u !== null && 'contactId' in u;
 }
 
+/**
+ * "Delete" IS the rejection in this UI — a manager refusing the request. The
+ * callback carries only the id, so value/item_count are deliberately absent
+ * rather than guessed from a cart we no longer hold.
+ */
+function handleAfterReject(cartId: string) {
+  track(
+    'propeller.authorization_request_rejected',
+    { cart_id: cartId ?? null },
+    `authorization_request_rejected:${cartId ?? ''}`
+  );
+}
+
 function handleAfterAccept(acceptedCart: Cart) {
+  // Procurement approving a request: the step between "cart built" and "order
+  // placed" that is invisible in the mutation stream today.
+  track(
+    'propeller.authorization_request_approved',
+    {
+      cart_id: acceptedCart?.cartId ?? null,
+      value: acceptedCart?.total?.totalGross ?? null,
+      item_count: acceptedCart?.items?.length ?? 0,
+    },
+    `authorization_request_approved:${acceptedCart?.cartId ?? ''}`
+  );
   parkManagerCart(cartStore.cart);
   cartStore.setCart(acceptedCart);
   router.push(localizeHref('/cart', languageStore.language));

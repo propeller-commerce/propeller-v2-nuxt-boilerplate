@@ -284,6 +284,7 @@ import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref, stripLanguagePrefix, detectLanguageFromPath } from '~/utils/config';
 import { restoreManagerCart } from '~/utils/cartHelpers';
 import { useTranslations } from '~/composables/useTranslations';
+import { trackLogin } from '~/lib/tracking/bootstrap';
 
 interface Props {
   menuTree?: MenuCategory[];
@@ -381,6 +382,7 @@ const navLinks = computed(() => {
     { label: 'Sale', url: '/sale', highlight: true },
   ];
   if (isContact.value) {
+    links.unshift({ label: 'Quick order', url: '/quick-order', highlight: false });
     links.unshift({ label: 'Machines', url: '/machines', highlight: false });
   }
   return links;
@@ -443,6 +445,14 @@ async function handleAfterLogin(
       body: { accessToken, refreshToken },
     }).catch(() => {});
   }
+
+  // The header dropdown is its own `afterLogin` sink — it does NOT go through
+  // `useAfterLogin`. Without this call the most common way to log in emitted no
+  // `login` event at all (PWP-910).
+  trackLogin(user as { contactId?: number; customerId?: number }, {
+    companyId: contactCompany?.companyId ?? null,
+    language: languageStore.language,
+  });
 
   router.push(localizeHref('/account', languageStore.language));
 }

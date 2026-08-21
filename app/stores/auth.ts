@@ -3,6 +3,8 @@ import { ref, computed, watch } from 'vue';
 import { type Contact, type Customer, PurchaseRole } from '@propeller-commerce/propeller-sdk-v2';
 import { isBrowser, safeStorage, setBrowserCookie, deleteBrowserCookie } from '~/utils/ssr';
 import { configuration } from '~/utils/config';
+import { track } from '~/lib/tracking/bus';
+import { clearTrackingIdentity } from '~/lib/tracking/bootstrap';
 
 type User = Contact | Customer;
 
@@ -113,6 +115,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    // Before the storage wipe, so the event still carries the outgoing
+    // identity. Emitted explicitly here rather than from a watcher on
+    // `isAuthenticated` — that watcher fires on every store construction.
+    track('logout', {}, `logout:${Date.now()}`);
+    clearTrackingIdentity();
+
     user.value = null;
     token.value = null;
     error.value = null;
