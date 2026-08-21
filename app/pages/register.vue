@@ -35,6 +35,7 @@ import { configuration, localizeHref } from '~/utils/config';
 import { COUNTRIES_MAP } from '~/utils/countries';
 import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
+import { trackLogin } from '~/lib/tracking/bootstrap';
 
 const registerFormLabels = useTranslations('RegisterForm');
 
@@ -80,7 +81,12 @@ async function handleAfterRegistration(
     { method: 'password', account_type: accountType },
     `sign_up:${accountType}:${Math.floor(Date.now() / 5000)}`
   );
-  track('login', { method: 'password' }, `login:password:${Date.now()}`);
+  // Through the shared helper, so a registration that auto-logs-in publishes
+  // the same identity context a normal login does.
+  trackLogin(user as { contactId?: number; customerId?: number }, {
+    companyId: (user as Contact).company?.companyId ?? null,
+    language: languageStore.language,
+  });
 
   authStore.setUser(user);
   authStore.setToken(accessToken);

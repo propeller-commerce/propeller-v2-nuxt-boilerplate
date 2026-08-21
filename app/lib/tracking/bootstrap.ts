@@ -171,6 +171,48 @@ export function trackIdentify(snapshot: IdentitySnapshot): void {
   );
 }
 
+/**
+ * Everything a successful login must emit, in one place.
+ *
+ * There is no single login function to hang this on. `<LoginForm>` performs the
+ * authentication itself and hands the user back through an `afterLogin`
+ * callback, and every surface that renders one — the header dropdown, the
+ * /login page, magic-login — then runs its OWN post-login sequence. Attaching
+ * the event to any one of them means the others silently emit nothing, which is
+ * exactly the hole this closes: header logins, the most common kind, were not
+ * being counted at all.
+ *
+ * So: one function, called from every `afterLogin` sink. Adding a new login
+ * surface means calling this, and nothing else.
+ */
+export function trackLogin(
+  user: { contactId?: number; customerId?: number } | null,
+  options: { companyId?: number | null; language?: string | null; method?: string } = {},
+): void {
+  const method = options.method ?? 'password';
+
+  // Context FIRST, then the events. The bootstrap's snapshot was taken while
+  // anonymous, and `tracker.ts` stamps each event with the context current at
+  // emit time — so publishing after would file the login itself under
+  // `user_mode: anonymous`. Callers must therefore have updated the auth and
+  // company stores before calling this, which every `afterLogin` sink does.
+  refreshTrackingContext();
+
+  // Emitted explicitly rather than from a `watch(isAuthenticated)`: that watcher
+  // runs with `{ immediate: true }` on every store construction, so it would
+  // report a login on every page load of an already-signed-in visitor.
+  track('login', { method }, `login:${method}:${Date.now()}`);
+
+  const contactId = user?.contactId ?? null;
+  trackIdentify({
+    userMode: contactId != null ? 'b2b' : 'b2c',
+    contactId,
+    customerId: contactId != null ? null : (user?.customerId ?? null),
+    companyId: options.companyId ?? null,
+    language: options.language?.slice(0, 2).toUpperCase() ?? null,
+  });
+}
+
 let publishContext: ((snapshot: IdentitySnapshot) => void) | null = null;
 let readIdentity: (() => IdentitySnapshot) | null = null;
 
