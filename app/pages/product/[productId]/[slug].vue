@@ -80,6 +80,7 @@
                   v-if="authStore.user"
                   :productId="(product as any).productId"
                   :labels="addToFavoriteLabels"
+                  :onFavoriteChanged="(change) => { if (change) trackFavoriteChange(change); }"
                 />
               </ClientOnly>
             </div>
@@ -168,6 +169,7 @@ import { configuration, localizeHref, portalMode } from '~/utils/config';
 import { resolveSeoTitle, resolveSeoDescription, resolveCanonicalUrl, buildJsonLdContext } from '~/utils/seo';
 import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
+import { trackFavoriteChange } from '~/lib/tracking/events';
 import { itemOptions, trackAddToCart } from '~/lib/tracking/events';
 import { itemsFromProducts } from '~/lib/tracking/items';
 

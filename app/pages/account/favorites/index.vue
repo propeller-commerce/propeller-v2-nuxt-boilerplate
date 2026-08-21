@@ -9,6 +9,7 @@
         :labels="favoriteListsLabels"
         :showActions="true"
         :allowFavoriteListCreate="true"
+        :onListChanged="(change) => { if (change) trackFavoriteListChange(change); }"
         :onListClick="(id: string) => router.push(localizeHref(`/account/favorites/${id}`, languageStore.language))"
       />
     </ClientOnly>
@@ -18,6 +19,7 @@
 <script setup lang="ts">
 import { FavoriteLists } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
+import { trackFavoriteListChange } from '~/lib/tracking/events';
 import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';
 import { useTranslations } from '~/composables/useTranslations';

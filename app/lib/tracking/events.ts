@@ -204,3 +204,66 @@ export function trackViewItemList(
     `view_item_list:${source.type}:${source.id ?? ''}:${source.page ?? 1}`
   );
 }
+
+/**
+ * `propeller.favorite_added` / `propeller.favorite_removed` from the favourite
+ * toggle on a PDP or cluster page.
+ *
+ * The direction comes from the package callback (vue-ui 0.17.0+). Until it
+ * reported one, an add and a removal were indistinguishable here, so neither
+ * event was emitted at all: GA4 `add_to_wishlist` read zero, and the tracker
+ * dashboard's favourites panel counted only the removals the list-detail view
+ * emits. Do not infer the direction from local state — that is the guess this
+ * exists to avoid.
+ */
+export function trackFavoriteChange(change: {
+  action: 'added' | 'removed';
+  listId?: string | number;
+  productId?: number;
+  clusterId?: number;
+}): void {
+  const itemId = change.productId ?? change.clusterId ?? null;
+  track(
+    change.action === 'added' ? 'propeller.favorite_added' : 'propeller.favorite_removed',
+    {
+      list_id: change.listId ?? null,
+      product_id: change.productId ?? null,
+      cluster_id: change.clusterId ?? null,
+    },
+    // Time-bucketed: re-favouriting later is a real second event, a
+    // double-invoke of the same click is not.
+    `favorite_${change.action}:${change.listId ?? ''}:${itemId ?? ''}:${Math.floor(Date.now() / 2000)}`
+  );
+}
+
+/**
+ * Fixed literals rather than `propeller.favorite_list_${action}`: the taxonomy
+ * is only enumerable while every name in it is written out somewhere.
+ */
+const FAVORITE_LIST_EVENTS = {
+  created: 'propeller.favorite_list_created',
+  updated: 'propeller.favorite_list_updated',
+  deleted: 'propeller.favorite_list_deleted',
+} as const;
+
+/**
+ * `propeller.favorite_list_created|updated|deleted`.
+ *
+ * The list's name is deliberately not sent: it is user-authored free text with
+ * no analytic value, and an id is a pointer where a copy is something to erase.
+ */
+export function trackFavoriteListChange(change: {
+  action: 'created' | 'updated' | 'deleted';
+  listId?: string | number;
+  name?: string;
+  isDefault?: boolean;
+}): void {
+  track(
+    FAVORITE_LIST_EVENTS[change.action],
+    {
+      list_id: change.listId ?? null,
+      is_default: change.isDefault ?? null,
+    },
+    `favorite_list_${change.action}:${change.listId ?? ''}:${Math.floor(Date.now() / 2000)}`
+  );
+}

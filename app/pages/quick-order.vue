@@ -17,6 +17,7 @@
             :configuration="quickOrderConfiguration"
             :parseSpreadsheet="handleParseSpreadsheet"
             templateUrl="/files/quickorder-template.xlsx"
+            :onTemplateDownload="handleTemplateDownload"
             :afterAddToCart="handleAddToCart"
             :onMissingCodes="onMissingCodes"
             :labels="t"
@@ -67,6 +68,19 @@ const quickOrderConfiguration = computed(() => ({
   imageVariantFiltersSmall: configuration.imageVariantFiltersSmall,
   baseCategoryId: menuStore.baseCategoryId ?? configuration.baseCategoryId,
 }));
+
+/**
+ * The template link is a plain anchor the package renders; this only observes
+ * the click. Navigation is untouched, so a slow bus must not delay it — which
+ * `track()` already guarantees by buffering rather than awaiting.
+ */
+function handleTemplateDownload() {
+  track(
+    'propeller.quick_order_template_downloaded',
+    {},
+    `quick_order_template_downloaded:${Math.floor(Date.now() / 2000)}`
+  );
+}
 
 function handleParseSpreadsheet(file: File) {
   const parsed = parseQuickOrderXlsx(file);

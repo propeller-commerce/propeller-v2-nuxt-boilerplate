@@ -31,8 +31,9 @@ contract — Nuxt SSR.
 - **Pinia** (`@pinia/nuxt`) for stores
 - **`@propeller-commerce/propeller-sdk-v2`** for GraphQL — server-direct
   with apikey, client-proxied through `/api/graphql`
-- **`propeller-v2-vue-ui`** for the storefront component library (pinned via
-  `github:propeller-commerce/propeller-v2-vue-ui#master`)
+- **`propeller-v2-vue-ui`** for the storefront component library (a real npm
+  version — `0.17.0+`, whose favourite/list after-hooks report WHAT changed,
+  which the tracking layer below needs)
 
 > **Architecture note.** All visible UI surface lives in the
 > `propeller-v2-vue-ui` package — `<ProductCard>`, `<AddToCart>`,
@@ -343,6 +344,12 @@ nothing else changes.
 
 Mirrors propeller-next's implementation event-for-event, so reports are
 comparable across all three storefronts.
+
+46 of the 47 taxonomy names are wired. The last one, `propeller.quote_rejected`,
+has no reject action anywhere to hook. The favourite events need
+`propeller-v2-vue-ui` 0.17.0+: below that the toggle callback fires identically
+for an add and a removal, and guessing the direction is worse than not
+reporting at all.
 
 | Piece | Where |
 |---|---|

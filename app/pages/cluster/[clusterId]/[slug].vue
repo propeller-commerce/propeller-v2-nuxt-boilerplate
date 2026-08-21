@@ -104,6 +104,7 @@
                   v-if="authStore.user"
                   :clusterId="clusterId"
                   :labels="addToFavoriteLabels"
+                  :onFavoriteChanged="(change) => { if (change) trackFavoriteChange(change); }"
                 />
               </ClientOnly>
             </div>
@@ -179,6 +180,7 @@ import { configuration, localizeHref } from '~/utils/config';
 import { resolveSeoTitle, resolveSeoDescription, resolveCanonicalUrl, buildJsonLdContext } from '~/utils/seo';
 import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
+import { trackFavoriteChange } from '~/lib/tracking/events';
 import { trackAddToCart } from '~/lib/tracking/events';
 
 const breadcrumbsLabels = useTranslations('Breadcrumbs');
