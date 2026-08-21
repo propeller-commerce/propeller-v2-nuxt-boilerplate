@@ -1,5 +1,6 @@
 import { track as busTrack, tracker } from './tracker.ts';
 import { getTrackingConfig } from './config.ts';
+import type { EventName } from './taxonomy.ts';
 import type { TrackingContext } from './types';
 
 /**
@@ -40,8 +41,15 @@ const isBrowser = import.meta.client;
 /**
  * Emit an event. Never throws — analytics must not affect the user flow, an
  * invariant analytics code must always hold.
+ *
+ * `name` is the taxonomy union rather than `string`. The ingest silently DROPS
+ * an unrecognised name, so a typo costs a metric with no error anywhere — which
+ * is exactly how `propeller.address_default_changed` survived here. The shared
+ * `tracker.ts` core keeps `string` because it is byte-identical across the three
+ * storefronts; narrowing at this facade is what gives every call site in this
+ * app a compile-time check.
  */
-export function track(name: string, props: Record<string, unknown> = {}, key?: string): void {
+export function track(name: EventName, props: Record<string, unknown> = {}, key?: string): void {
   if (!isBrowser) return;
   if (!getTrackingConfig().enabled) return;
   try {

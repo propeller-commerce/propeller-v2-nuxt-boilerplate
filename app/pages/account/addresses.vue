@@ -116,6 +116,7 @@ import { useCompanyStore } from '~/stores/company';
 import { COUNTRIES } from '~/utils/countries';
 import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
+import type { EventName } from '~/lib/tracking/taxonomy';
 
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
@@ -188,7 +189,7 @@ function handleAddAddress(type: AddressType) {
  * Address events carry `owner_type` because the composable branches on company
  * vs customer input, so the two are genuinely different signals.
  */
-function trackAddress(name: string, address: { id?: unknown; type?: unknown }) {
+function trackAddress(name: EventName, address: { id?: unknown; type?: unknown }) {
   track(
     name,
     {
@@ -218,7 +219,7 @@ async function handleSetDefault(address: Address) {
   if (!address.id) return;
   const result = await setDefaultAddress(Number(address.id));
   if (result.success) {
-    trackAddress('propeller.address_default_changed', address);
+    trackAddress('propeller.address_set_default', address);
     await authStore.refreshUser();
   }
 }
