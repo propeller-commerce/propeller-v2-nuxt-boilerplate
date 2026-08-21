@@ -2,6 +2,8 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Company } from '@propeller-commerce/propeller-sdk-v2';
 import { isBrowser, safeStorage } from '~/utils/ssr';
+import { track } from '~/lib/tracking/bus';
+import { refreshTrackingContext } from '~/lib/tracking/bootstrap';
 
 const STORAGE_KEY = 'selected_company';
 const COOKIE_KEY = 'selected_company_id';
@@ -30,11 +32,27 @@ export const useCompanyStore = defineStore('company', () => {
   const companyId = computed(() => selectedCompany.value?.companyId ?? null);
 
   function setSelectedCompany(company: Company) {
+    const previousId = selectedCompany.value?.companyId ?? null;
     selectedCompany.value = company;
     safeStorage.setItem(STORAGE_KEY, JSON.stringify(company));
     writeCompanyCookie(company.companyId);
     if (isBrowser) {
       window.dispatchEvent(new CustomEvent('companySwitched', { detail: company }));
+    }
+
+    // Only a real change is a switch — this setter also runs on login and on
+    // restore, where nothing was chosen. Matches propeller-next's guard; without
+    // the null half, every B2B login reports a company switch (PWP-910).
+    if (previousId != null && previousId !== company.companyId) {
+      // AFTER the assignment above, not before: this reads the store, so
+      // republishing first would stamp the OLD company on everything that
+      // follows — including the switch event itself.
+      refreshTrackingContext();
+      track(
+        'propeller.company_switched',
+        { from_company_id: previousId, to_company_id: company.companyId },
+        `company_switched:${previousId}:${company.companyId}:${Math.floor(Date.now() / 2000)}`
+      );
     }
   }
 

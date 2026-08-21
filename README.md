@@ -333,6 +333,132 @@ across all three consumers. The cache + revalidate contract
 `/api/revalidate` webhook body) is byte-identical across them by design —
 the same backend webhook drives every consumer.
 
+## Behaviour tracking (`/tracker`) and GA4
+
+The storefront emits its own event vocabulary on a tracking bus
+(`app/lib/tracking/`, PWP-910). Two subscribers read that one stream: a batching
+POST to `/api/track` (which writes MySQL) and a GA4 mapper. A tenant who wants
+Segment or Snowplow instead writes a third mapper against the same events —
+nothing else changes.
+
+Mirrors propeller-next's implementation event-for-event, so reports are
+comparable across all three storefronts.
+
+| Piece | Where |
+|---|---|
+| Framework-free core (taxonomy, queue, GA4 item mapping) | `app/lib/tracking/{types,taxonomy,tracker,batch,items}.ts` |
+| Browser facade + bootstrap | `app/lib/tracking/{bus,bootstrap,pageType}.ts` |
+| Typed emit helpers | `app/lib/tracking/events.ts` |
+| The one Nuxt-context read | `app/plugins/tracking.client.ts` |
+| Ingest + metrics routes | `server/api/track.post.ts`, `server/api/tracker/index.get.ts` |
+| Pool, metric queries, DDL | `server/utils/tracking{Db,Queries,Schema}.ts` |
+| Schema installer | `scripts/tracking-init.ts` |
+| Dashboard | `app/pages/tracker.vue`, `app/components/tracker/` |
+
+### The analytics database
+
+**Optional.** With nothing configured the shop runs normally, `/api/track`
+answers 202 and `/tracker` says which of the three setup problems it is instead
+of showing empty charts.
+
+Nothing is created automatically — not at install, not at first boot: DDL at boot
+races across instances and needs production privileges the app account usually
+does not have. Point the `TRACKING_DB_*` variables in `.env` at a database (see
+`.env.example` for the URL / socket / TLS forms), then:
+
+```bash
+npm run tracking:init              # create the schema
+npm run tracking:init -- --dry-run # report what it would do, change nothing
+```
+
+Safe to run repeatedly, so it belongs in a deploy pipeline. It detects the engine
+and generates matching DDL — **MariaDB 10+, MySQL 5.6+, MySQL 8 and Cloud SQL**
+all work from the one command. Where there is no native JSON type `props` becomes
+`LONGTEXT`; where partitioning is disabled the table is created unpartitioned,
+which costs only the `DROP PARTITION` retention shortcut.
+
+MySQL DDL does not roll back, so the installer is **resumable** rather than
+transactional: every statement is `IF NOT EXISTS` and each completed migration is
+recorded in a `schema_migrations` ledger. Fix the problem, run it again, and it
+continues from where it stopped. If it cannot finish — most often because the
+account may not create databases, which is normal on Cloud SQL — it writes
+`tracking-schema.sql` and prints the grants the account actually holds. You can
+ask for that file up front from a machine with no route to the database at all:
+
+```bash
+npm run tracking:init -- --print-sql
+mysql -h <host> -u <user> -p < tracking-schema.sql
+```
+
+It writes the same ledger rows the installer would, so a later `tracking:init`
+**adopts** the result rather than repeating it.
+
+### Two things worth knowing before reading a report
+
+- **`value` is EX-VAT, with `tax` reported separately.** This SDK inverts the
+  usual naming — `gross` excludes VAT and `net` includes it — so the ex-VAT
+  figure is `total.gross` / `totalGross`. Matches the WordPress plugin.
+- **Cart quantity edits report the delta**, not the resulting line quantity:
+  raising a line 2 → 5 is `add_to_cart` with quantity 3.
+
+### GA4 / Google Tag Manager
+
+Off by default. With `NUXT_PUBLIC_USE_GA4=false` no script loads and no
+`dataLayer` is created.
+
+```ini
+NUXT_PUBLIC_USE_GA4=false   # master switch
+NUXT_PUBLIC_GA4_KEY=        # G-XXXXXXXXXX — required when USE_GA4 is true
+NUXT_PUBLIC_GTM_KEY=        # GTM-XXXXXXX — optional, and it CHANGES THE TRANSPORT
+```
+
+Keep these as **strings** in `nuxt.config.ts`, compared to `'true'`. Nuxt's
+`NUXT_*` override only coerces when the default's type matches, so a real boolean
+default changes behaviour between `nuxt dev` and `node .output/server` — the same
+trap `paymentProvider` and `mollieTestMode` already work around.
+
+**The two transports are not interchangeable.** With `NUXT_PUBLIC_GTM_KEY` set we push
+`{event, ecommerce}` objects, which is what a container understands; without one
+we call `gtag('event', …)`, which is the only thing gtag.js understands. Sending
+the wrong one fails silently.
+
+**With a container, events only reach GA4 once a tag exists for them in GTM.**
+The property will otherwise show just Google's own automatic events while the
+storefront is pushing correctly. Build tags for the names in
+`app/lib/tracking/taxonomy.ts` — the GA4 names are those, with `propeller.`
+rewritten to `propeller_` (a dot is illegal in a GA4 event name).
+
+Verify with `npm run test:tracking`.
+
+### `/tracker` is ungated
+
+**Gate it before deploying anywhere shared.** It exposes every account's
+behaviour and revenue to anyone with the URL. It is `noindex` and wrapped in
+`<ClientOnly>`, which is not access control. Deliberately not behind the `auth`
+middleware either — that would let any logged-in *customer* read it.
+
+### Changing the schema
+
+`server/utils/trackingSchema.ts` is the single source of truth. Migrations are
+append-only: an id that has shipped is frozen, because installs in the field have
+recorded it. Change an existing table with a new entry, never by editing an old
+one — the ledger stores a checksum per migration and warns when one was applied
+from different SQL than is now shipped.
+
+Unlike propeller-vue — whose `server.js` bypasses Vite and therefore needs a
+plain-JS duplicate of the event allowlist — Nitro compiles server code with the
+same TypeScript pipeline, so `server/api/track.post.ts` imports the taxonomy from
+`app/lib/` directly. One list, no drift risk.
+
+Two Nitro-specific traps are worth remembering when adding to the server half:
+
+- **`server/utils/**` is auto-imported recursively.** Every export there becomes
+  a global identifier, which is why the modules are named `tracking*` and the
+  metric registry is `TRACKER_METRICS` rather than `METRICS`. A collision is a
+  runtime "not a function" in an unrelated file, with no compile-time signal.
+- **`mysql2` is CommonJS with dynamic requires.** Fine on the default
+  `node-server` preset; it breaks under any bundling preset.
+
 ## PunchOut (OCI + cXML)
 
 B2B e-procurement PunchOut, built on magic-token login and powered by

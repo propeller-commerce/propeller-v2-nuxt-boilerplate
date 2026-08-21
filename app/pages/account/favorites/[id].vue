@@ -32,6 +32,7 @@ import { FavoriteListDetails, useFavorites, type AnyUser } from '@propeller-comm
 import { useAuthStore } from '~/stores/auth';
 import { useCartStore } from '~/stores/cart';
 import { useTranslations } from '~/composables/useTranslations';
+import { track } from '~/lib/tracking/bus';
 
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
@@ -57,6 +58,11 @@ async function handleItemDelete(itemId: string, itemType?: string) {
   } else {
     await removeFromList(listId, numericId, undefined);
   }
+  track(
+    'propeller.favorite_removed',
+    { list_id: Number(listId) || null, item_type: itemType ?? 'product', count: 1 },
+    `favorite_removed:${listId}:${itemId}:${Math.floor(Date.now() / 2000)}`
+  );
 }
 
 async function handleItemsDelete(items: { id: string; type: 'product' | 'cluster' }[]) {
@@ -68,6 +74,11 @@ async function handleItemsDelete(items: { id: string; type: 'product' | 'cluster
     listId,
     productIds.length ? productIds : undefined,
     clusterIds.length ? clusterIds : undefined
+  );
+  track(
+    'propeller.favorite_removed',
+    { list_id: Number(listId) || null, count: items.length },
+    `favorite_removed:${listId}:bulk:${Math.floor(Date.now() / 2000)}`
   );
 }
 

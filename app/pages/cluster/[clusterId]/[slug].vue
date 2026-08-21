@@ -95,7 +95,7 @@
                   :createCart="true"
                   :showModal="true"
                   :onCartCreated="(cart: any) => cartStore.setCart(cart)"
-                  :afterAddToCart="(cart: any) => cartStore.setCart(cart)"
+                  :afterAddToCart="handleClusterAddToCart"
                   :onProceedToCheckout="() => router.push(localizeHref('/checkout', languageStore.language))"
                   :onRequestQuoteClick="() => router.push(localizeHref('/checkout?mode=quote', languageStore.language))"
                   :labels="addToCartLabels"
@@ -178,6 +178,8 @@ import { usePriceStore } from '~/stores/price';
 import { configuration, localizeHref } from '~/utils/config';
 import { resolveSeoTitle, resolveSeoDescription, resolveCanonicalUrl, buildJsonLdContext } from '~/utils/seo';
 import { useTranslations } from '~/composables/useTranslations';
+import { track } from '~/lib/tracking/bus';
+import { trackAddToCart } from '~/lib/tracking/events';
 
 const breadcrumbsLabels = useTranslations('Breadcrumbs');
 const productGalleryLabels = useTranslations('ProductGallery');
@@ -325,6 +327,42 @@ function validateClusterOptions(): boolean {
   }
   return true;
 }
+
+// ── Cluster tracking (PWP-910) ───────────────────────────────────────────────
+
+function handleClusterAddToCart(cart: any, item?: any) {
+  cartStore.setCart(cart);
+  // Source `cluster` separates a configured add from a plain PDP one — the
+  // configurator is the point of the page, so it needs its own provenance.
+  trackAddToCart(
+    { type: 'cluster', id: Number.isFinite(clusterId.value) ? clusterId.value : null },
+    item,
+    cart,
+    null,
+    languageStore.language
+  );
+}
+
+// Self-reported `page_viewed`, which is why the generic router hook skips this
+// route (`lib/tracking/pageType.ts`).
+watch(
+  [clusterId, cluster],
+  () => {
+    if (!Number.isFinite(clusterId.value)) return;
+    track(
+      'page_viewed',
+      {
+        page_type: 'cluster',
+        entity_type: 'cluster',
+        entity_id: clusterId.value,
+        entity_name:
+          (getLanguageString((cluster.value as any)?.names, languageStore.language, '') as string) || null,
+      },
+      `page_viewed:cluster:${clusterId.value}`
+    );
+  },
+  { immediate: true }
+);
 
 watch(
   () => route.params.clusterId,

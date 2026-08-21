@@ -18,6 +18,7 @@ import { useCartStore } from '~/stores/cart'
 import { useCompanyStore } from '~/stores/company'
 import { useLanguageStore } from '~/stores/language'
 import { configuration } from '~/utils/config'
+import { trackLogin } from '~/lib/tracking/bootstrap'
 
 export function useAfterLogin() {
   const { $graphqlClient } = useNuxtApp()
@@ -41,6 +42,8 @@ export function useAfterLogin() {
     refreshToken?: string,
     expiresAt?: string,
     anonymousCart?: Cart | null,
+    /** How the session was authenticated — 'password' or 'magic_token'. */
+    method: string = 'password',
   ): Promise<{ effectiveLanguage: string }> {
     authStore.setUser(user)
     if (accessToken) {
@@ -95,6 +98,12 @@ export function useAfterLogin() {
     }
 
     cartStore.setCart(targetCart ?? null)
+
+    trackLogin(user as { contactId?: number; customerId?: number }, {
+      companyId: companyStore.selectedCompany?.companyId ?? null,
+      language: languageStore.language,
+      method,
+    })
 
     return { effectiveLanguage: userLang || languageStore.language }
   }
