@@ -1,0 +1,12 @@
+{
+  "pendingTitle": "Your payment is still open",
+  "pendingBody": "We haven't received your payment yet. If you've already paid it can take a moment to confirm — check the status below, or return to checkout to try again.",
+  "checkStatus": "Check payment status",
+  "checking": "Checking…",
+  "backToCheckout": "Back to checkout",
+  "failedTitle": "Payment not completed",
+  "failedBody": "Your payment was not completed. Your cart has been kept, so you can try again.",
+  "tryAgain": "Try again",
+  "backToCart": "Back to cart",
+  "startFailed": "Could not start the payment. Please try again."
+}

@@ -1,0 +1,50 @@
+{
+  "name": "propeller-nuxt",
+  "version": "1.10.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev --port 5000",
+    "locales:build": "node scripts/build-locales-registry.mjs",
+    "predev": "node scripts/build-locales-registry.mjs",
+    "prebuild": "node scripts/build-locales-registry.mjs",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "clean": "node -e \"const{rmSync}=require('fs');for(const d of ['.nuxt','.output','dist'])rmSync(d,{recursive:true,force:true})\"",
+    "test:tracking": "node --test --experimental-strip-types app/lib/tracking/*.test.ts",
+    "tracking:init": "node --experimental-strip-types scripts/tracking-init.ts"
+  },
+  "dependencies": {
+    "@nuxtjs/i18n": "^9.5.0",
+    "@pinia/nuxt": "^0.6.0",
+    "@propeller-commerce/propeller-sdk-v2": "^0.16.0",
+    "@propeller-commerce/propeller-v2-mollie": "^0.2.4",
+    "@propeller-commerce/propeller-v2-msp": "^0.1.2",
+    "@propeller-commerce/propeller-v2-punchout": "^0.1.0",
+    "@propeller-commerce/propeller-v2-vue-ui": "^0.17.0",
+    "@vueuse/core": "^14.2.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lodash.debounce": "^4.0.8",
+    "lucide-vue-next": "^0.469.0",
+    "marked": "^18.0.0",
+    "mysql2": "^3.23.4",
+    "pinia": "^2.2.0",
+    "qs": "^6.15.0",
+    "swiper": "^12.1.3",
+    "tailwind-merge": "^3.5.0",
+    "vue-hot-toast": "^0.0.1-rc.4",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@nuxtjs/tailwindcss": "^7.0.0-beta.0",
+    "@types/lodash.debounce": "^4.0.9",
+    "@types/qs": "^6.15.0",
+    "nuxt": "^3.14.0",
+    "typescript": "~5.6.0",
+    "vue-tsc": "^2.1.10"
+  }
+}

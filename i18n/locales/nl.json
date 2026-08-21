@@ -1,0 +1,40 @@
+{
+  "site": {
+    "title": "Propeller Shop",
+    "tagline": "Headless commerce, Nuxt-powered"
+  },
+  "nav": {
+    "home": "Home",
+    "cart": "Winkelwagen",
+    "login": "Inloggen",
+    "register": "Registreren",
+    "account": "Mijn account",
+    "logout": "Uitloggen",
+    "search": "Zoeken"
+  },
+  "pages": {
+    "home": "Home",
+    "cart": "Winkelwagen",
+    "checkout": "Afrekenen",
+    "checkoutThankYou": "Bedankt voor uw bestelling",
+    "blog": "Blog",
+    "login": "Inloggen",
+    "register": "Account aanmaken",
+    "forgotPassword": "Wachtwoord vergeten",
+    "terms": "Algemene voorwaarden",
+    "account": "Mijn account",
+    "accountAddresses": "Adressen",
+    "accountOrders": "Bestellingen",
+    "accountQuotes": "Offertes",
+    "accountQuoteRequests": "Offerteaanvragen",
+    "accountFavorites": "Favorieten",
+    "accountInvoices": "Facturen",
+    "accountPriceRequests": "Prijsaanvragen",
+    "accountAuthorizationRequests": "Autorisatieverzoeken",
+    "accountAuthorizationSettings": "Autorisatie-instellingen",
+    "search": "Zoekresultaten",
+    "categoryNotFound": "Categorie niet gevonden",
+    "productNotFound": "Product niet gevonden",
+    "clusterNotFound": "Cluster niet gevonden"
+  }
+}

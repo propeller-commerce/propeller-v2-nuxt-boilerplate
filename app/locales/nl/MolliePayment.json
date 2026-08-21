@@ -1,0 +1,12 @@
+{
+  "pendingTitle": "Je betaling staat nog open",
+  "pendingBody": "We hebben je betaling nog niet ontvangen. Als je al betaald hebt, kan het even duren voordat dit bevestigd is — controleer hieronder de status, of ga terug naar de kassa om het opnieuw te proberen.",
+  "checkStatus": "Betaalstatus controleren",
+  "checking": "Bezig met controleren…",
+  "backToCheckout": "Terug naar kassa",
+  "failedTitle": "Betaling niet voltooid",
+  "failedBody": "Je betaling is niet voltooid. Je winkelwagen is bewaard, zodat je het opnieuw kunt proberen.",
+  "tryAgain": "Opnieuw proberen",
+  "backToCart": "Terug naar winkelwagen",
+  "startFailed": "Kan de betaling niet starten. Probeer het opnieuw."
+}
