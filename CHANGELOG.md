@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-08-21
+
+### Added
+
+- **The last five reachable taxonomy events are wired — 46 of 47 (PWP-910).**
+  Needs `propeller-v2-vue-ui` 0.17.0, whose after-hooks now report what
+  changed. `propeller.favorite_added` had never been emitted by any of the
+  three storefronts: the toggle callback fired identically for an add and a
+  removal, so GA4 `add_to_wishlist` and the dashboard's favourites panel read
+  zero. `propeller.favorite_list_created` / `_updated` / `_deleted` and
+  `propeller.quick_order_template_downloaded` were unwired for the same
+  reason. Only `propeller.quote_rejected` is left, and no reject UI exists to
+  hook. The two shared helpers land in `app/lib/tracking/events.ts`, which
+  stays byte-identical to propeller-vue's copy.
+
+### Fixed
+
+- **The set-default address event was thrown away (PWP-910).**
+  `account/addresses.vue` emitted `propeller.address_default_changed`, a name
+  the taxonomy does not contain, and the ingest discards unrecognised names
+  without an error — so the metric read zero since tracking shipped. The
+  correct name is `propeller.address_set_default`, which propeller-next emits.
+- **Unknown event names now fail to compile.** `app/lib/tracking/bus.ts` took
+  `name: string`, which erased the taxonomy check for every call site behind
+  the facade — that is why the typo above survived review and `nuxt typecheck`.
+  It takes `EventName` now. The shared `tracker.ts` core keeps `string`: it is
+  byte-identical across the three storefronts, so the facade is the right seam.
+- **`npm run clean` was broken on every platform (PWP-942 #5).** The PowerShell
+  one-liner had an unterminated quote, so it failed even on Windows, and it was
+  Windows-only besides. propeller-next and propeller-vue were fixed when the
+  finding came in; nuxt was missed. Now the same portable node one-liner,
+  extended to `.output`.
+
 ## [1.9.0] - 2026-08-21
 
 ### Added
