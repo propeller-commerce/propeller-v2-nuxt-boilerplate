@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-08-26
+
+### Fixed
+
+- **The configured default language was ignored.** `app/utils/config.ts` read
+  `process.env.NUXT_PUBLIC_DEFAULT_LANGUAGE`, a variable nothing in the scaffold
+  ever set and which is undefined in the browser bundle anyway — so
+  `DEFAULT_LANGUAGE` was always `NL` and a shop scaffolded `--default-locale=en`
+  served Dutch at `/` with English pushed behind `/en`, exactly inverted.
+  `nuxt.config.ts` resolves it from `BOILERPLATE_DEFAULT_LANGUAGE` (the variable
+  the scaffolder writes) and inlines it, because the helpers that consume it run
+  at module scope and cannot call `useRuntimeConfig()`.
+- **The UI language was inferred from the currency.** The language store picked
+  `runtimeConfig.public.currencyCode === 'EUR' ? 'NL' : 'EN'`, never consulting
+  the configured default — a euro shop set to English still opened in Dutch. It
+  reads `public.defaultLanguage` now.
+- **`SUPPORTED_LANGUAGES` was hardcoded `['NL','EN']`,** so a shop scaffolded
+  with other locales still prefixed exactly those two: a locale it shipped got
+  no prefix, and one it didn't got one. Derived from `BOILERPLATE_LOCALES`.
+
 ## [1.10.0] - 2026-08-21
 
 ### Added

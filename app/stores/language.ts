@@ -6,7 +6,10 @@ const STORAGE_KEY = 'preferred_language';
 
 export const useLanguageStore = defineStore('language', () => {
   const runtimeConfig = useRuntimeConfig();
-  const DEFAULT_LANGUAGE = (runtimeConfig.public.currencyCode === 'EUR' ? 'NL' : 'EN').toUpperCase();
+  // Was inferred from the currency (`EUR ? 'NL' : 'EN'`), which ignored the
+  // configured default language entirely — a euro shop set to English still
+  // opened in Dutch.
+  const DEFAULT_LANGUAGE = String(runtimeConfig.public.defaultLanguage || 'NL').toUpperCase();
 
   const language = ref(safeStorage.getItem(STORAGE_KEY) || DEFAULT_LANGUAGE);
 

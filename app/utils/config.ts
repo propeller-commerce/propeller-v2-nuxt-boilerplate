@@ -39,9 +39,21 @@ const URL_PATTERN = process.env.NUXT_PUBLIC_URL_PATTERN || 'page/id/slug';
  * unprefixed; every other entry gets a `/${lang.toLowerCase()}` prefix on
  * navigation. Keep this list in sync with the router's `:lang(...)` regex.
  */
-export const DEFAULT_LANGUAGE = (process.env.NUXT_PUBLIC_DEFAULT_LANGUAGE || 'NL').toUpperCase();
-export const SUPPORTED_LANGUAGES = ['NL', 'EN'] as const;
-export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+// Injected by `vite.define` in nuxt.config.ts, which resolves them from
+// BOILERPLATE_DEFAULT_LANGUAGE / BOILERPLATE_LOCALES at build time. These used
+// to read `process.env.NUXT_PUBLIC_*`, which is undefined in the browser bundle
+// and which nothing ever set, so the default language was pinned to 'NL'.
+declare const __DEFAULT_LANGUAGE__: string | undefined;
+declare const __SUPPORTED_LANGUAGES__: string[] | undefined;
+
+export const DEFAULT_LANGUAGE = (
+  typeof __DEFAULT_LANGUAGE__ === 'string' ? __DEFAULT_LANGUAGE__ : 'NL'
+).toUpperCase();
+export const SUPPORTED_LANGUAGES: string[] =
+  typeof __SUPPORTED_LANGUAGES__ !== 'undefined' && __SUPPORTED_LANGUAGES__.length > 0
+    ? __SUPPORTED_LANGUAGES__
+    : ['NL', 'EN'];
+export type SupportedLanguage = string;
 
 /** Languages that get a URL prefix (everything except the default). */
 export const PREFIXED_LANGUAGES = SUPPORTED_LANGUAGES.filter((l) => l !== DEFAULT_LANGUAGE);

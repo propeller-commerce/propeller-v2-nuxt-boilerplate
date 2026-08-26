@@ -1,3 +1,26 @@
+/**
+ * Language settings, resolved here and inlined into both bundles.
+ *
+ * `app/utils/config.ts` exports pure helpers (`localizeHref`,
+ * `detectLanguageFromPath`) used from module scope, so they cannot call
+ * `useRuntimeConfig()`. They read `process.env.NUXT_PUBLIC_DEFAULT_LANGUAGE`,
+ * which is undefined in the browser bundle and which nothing set anyway — so
+ * the default language was always 'NL' and an `--default-locale=en` shop
+ * served Dutch at `/`. `BOILERPLATE_DEFAULT_LANGUAGE` is what the scaffolder
+ * writes; the `NUXT_PUBLIC_` form stays as an explicit override.
+ */
+const DEFAULT_LANGUAGE = (
+  process.env.NUXT_PUBLIC_DEFAULT_LANGUAGE ||
+  process.env.BOILERPLATE_DEFAULT_LANGUAGE ||
+  'NL'
+).toUpperCase();
+
+/** Every language the shop ships — hardcoded `['NL','EN']` before. */
+const SUPPORTED_LANGUAGES = (process.env.BOILERPLATE_LOCALES || 'nl,en')
+  .split(',')
+  .map((code) => code.trim().toUpperCase())
+  .filter(Boolean);
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-01',
@@ -125,6 +148,8 @@ export default defineNuxtConfig({
       // process.env reads in app/utils/config.ts). `source` empty = disabled.
       machineSource: process.env.NUXT_PUBLIC_MACHINE_SOURCE || process.env.BOILERPLATE_MACHINE_SOURCE || '',
       machineLanguage: process.env.NUXT_PUBLIC_MACHINE_LANGUAGE || process.env.BOILERPLATE_MACHINE_LANGUAGE || 'EN',
+      defaultLanguage: DEFAULT_LANGUAGE,
+      supportedLanguages: SUPPORTED_LANGUAGES,
       siteName: process.env.NUXT_PUBLIC_SITE_NAME || 'Propeller Shop',
       logoUrl: process.env.NUXT_PUBLIC_LOGO_URL || '/propeller_logo.webp',
       logoAlt: process.env.NUXT_PUBLIC_LOGO_ALT || 'Propeller',
@@ -179,6 +204,12 @@ export default defineNuxtConfig({
   // we don't use it, so its dead-code branch never executes — but Vite
   // still complains. Alias it to an empty stub to silence the warning.
   vite: {
+    // Inlined so the pure helpers in app/utils/config.ts see the same values in
+    // the server and browser bundles — see the note above the constants.
+    define: {
+      __DEFAULT_LANGUAGE__: JSON.stringify(DEFAULT_LANGUAGE),
+      __SUPPORTED_LANGUAGES__: JSON.stringify(SUPPORTED_LANGUAGES),
+    },
     resolve: {
       alias: {
         '#app-manifest': new URL('./app/stubs/app-manifest.mjs', import.meta.url).pathname,
