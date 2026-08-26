@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-08-26
+
+### Changed
+
+- Consumes `propeller-v2-vue-ui` `^0.18.0`, which carries the Vue half of the
+  storefront-integration batch: prices formatted in the storefront's language
+  rather than always Dutch, a currency that reaches the price-range inputs and
+  the active filter chip, the volume-pricing heading honouring an explicit blank,
+  the mini-cart qualifying its excl-VAT total, `CartSummary`'s card treatment,
+  a `SearchBar` input that survives a light header, order-item links that keep
+  the locale prefix, skeleton rows while the order list reloads, `addItems()`,
+  and bonus items shown in the add-to-cart modal.
+
 ## [1.11.0] - 2026-08-26
 
 ### Fixed

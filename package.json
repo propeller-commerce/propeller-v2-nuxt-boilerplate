@@ -1,6 +1,6 @@
 {
   "name": "propeller-nuxt",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -24,7 +24,7 @@
     "@propeller-commerce/propeller-v2-mollie": "^0.2.4",
     "@propeller-commerce/propeller-v2-msp": "^0.1.2",
     "@propeller-commerce/propeller-v2-punchout": "^0.1.0",
-    "@propeller-commerce/propeller-v2-vue-ui": "^0.17.0",
+    "@propeller-commerce/propeller-v2-vue-ui": "^0.18.0",
     "@vueuse/core": "^14.2.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
