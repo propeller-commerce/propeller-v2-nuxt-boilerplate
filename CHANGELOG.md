@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.2] - 2026-08-27
+
+### Fixed
+
+- Consumes `propeller-v2-vue-ui` `^0.18.2`, which resolves the money locale and
+  currency from `<PropellerProvider>` on the price, order-total and checkout
+  surfaces that previously read them straight off their props — and so
+  formatted at the Dutch default unless the host threaded the prop.
+
 ## [1.12.1] - 2026-08-26
 
 ### Changed
