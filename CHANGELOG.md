@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-09-23
+
+Consumes SDK 0.17.0 and vue-ui 0.20.0 — spare-parts machines with no slug in
+the tree language no longer disappear from the list, and the parts grid takes
+label overrides.
+
+### Fixed
+
+- **Server-rendered listings returned nothing for ENUM-backed facets.**
+  Attribute filters are typed and the backend silently matches NOTHING when the
+  type is wrong — no error, just zero results. The URL carries filter names and
+  values but no types, so the SSR path guessed `TEXT` for everything and any
+  ENUM facet (season, colour, EU labels) server-rendered an empty grid on a
+  refreshed, pasted or shared filtered URL. The client path never hit it: it
+  resolves each type from the facet list it already holds. `retypeTextFilters`
+  — which propeller-next has carried since the same bug was fixed there — is
+  now ported into `server/utils/fetchers.ts` and wired into `fetchCategory` and
+  `fetchSearch`: one corrected retry, and only when a type actually differed,
+  so nothing extra is paid when the guess was right. (PWP-992)
+- **A locale with no dictionary rendered blank strings instead of falling back
+  to English.** The registry wrote `{}` placeholders for missing namespaces and
+  at runtime those were used as-is, so a shop whose default locale ships no
+  translations came up with empty labels everywhere — page shell and tenant
+  data visible, everything label-driven invisible, no warning, all 200s. The
+  registry now emits the canonical dictionary in place of `{}`, and
+  `createFileProvider` falls back to `CANONICAL_LOCALE` for a locale absent
+  from the registry entirely. (PWP-978)
+- **`app/locales/en/` was required but could be pruned, producing an app that
+  could not start.** `build-locales-registry.mjs` exited 1 when `en` was
+  missing, while the CLI trims it whenever it is not in `--locales`. The
+  canonical namespace set is now `en` when present, else whichever locale
+  defines the most namespaces. (PWP-977)
+
+### Changed
+
+- `app/locales/_registry.ts` now also exports `CANONICAL_LOCALE`.
+
 ## [1.12.3] - 2026-09-23
 
 ### Changed

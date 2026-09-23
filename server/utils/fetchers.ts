@@ -17,6 +17,7 @@ import {
   type SearchFieldsInput,
   type FilterAvailableAttributeInput,
   type ProductTextFilterInput,
+  type AttributeType,
   type ProductPriceFilterInput,
   type ClusterConfigSetting,
   type Contact,
@@ -298,15 +299,29 @@ export async function fetchCategory(
     tags,
     bypass: !infra.cacheable,
     fetcher: async () => {
-      try {
-        const result = await infra.services.category.getCategory({
+      const run = (input: CategoryProductSearchInput) =>
+        infra.services.category.getCategory({
           categoryId,
           language: lang,
-          categoryProductSearchInput,
+          categoryProductSearchInput: input,
           filterAvailableAttributeInput: FILTER_AVAILABLE_ATTRIBUTE_INPUT,
           imageSearchFilters: imageSearchFiltersGrid,
           imageVariantFilters: imageVariantFiltersMedium,
         });
+
+      try {
+        let result = await run(categoryProductSearchInput);
+        // The URL carries filter names and values but no attribute types, and the
+        // backend matches NOTHING when a type is wrong — no error, just an empty
+        // grid. Correct them against the facets we just got back and redo the query,
+        // but only when a type actually differed. See `retypeTextFilters` (PWP-992).
+        const retyped = retypeTextFilters(
+          categoryProductSearchInput.textFilters,
+          (result?.products as ProductsResponse | undefined)?.filters
+        );
+        if (retyped) {
+          result = await run({ ...categoryProductSearchInput, textFilters: retyped });
+        }
         return result ? (toPlain(result) as FetchedCategory) : null;
       } catch (e) {
         if (e instanceof Error && /not found|null for non-nullable/i.test(e.message)) {
@@ -354,15 +369,29 @@ export async function fetchSearch(
     tags,
     bypass: !infra.cacheable,
     fetcher: async () => {
-      try {
-        const result = await infra.services.category.getCategory({
+      const run = (input: CategoryProductSearchInput) =>
+        infra.services.category.getCategory({
           categoryId: baseCategoryId,
           language: lang,
-          categoryProductSearchInput,
+          categoryProductSearchInput: input,
           filterAvailableAttributeInput: FILTER_AVAILABLE_ATTRIBUTE_INPUT,
           imageSearchFilters: imageSearchFiltersGrid,
           imageVariantFilters: imageVariantFiltersMedium,
         });
+
+      try {
+        let result = await run(categoryProductSearchInput);
+        // The URL carries filter names and values but no attribute types, and the
+        // backend matches NOTHING when a type is wrong — no error, just an empty
+        // grid. Correct them against the facets we just got back and redo the query,
+        // but only when a type actually differed. See `retypeTextFilters` (PWP-992).
+        const retyped = retypeTextFilters(
+          categoryProductSearchInput.textFilters,
+          (result as { products?: ProductsResponse } | null)?.products?.filters
+        );
+        if (retyped) {
+          result = await run({ ...categoryProductSearchInput, textFilters: retyped });
+        }
         const products = (result as { products?: ProductsResponse } | null)?.products;
         return products ? (toPlain(products) as ProductsResponse) : null;
       } catch (e) {
@@ -503,4 +532,47 @@ export async function fetchMenu(
       }
     },
   });
+}
+
+/** The facet-list shape `retypeTextFilters` reads — a structural subset of the
+ *  SDK's `AttributeFilter`, so callers can pass the response array as-is. */
+interface FacetTypeSource {
+  type?: AttributeType | null;
+  attributeDescription?: { name?: string | null; type?: AttributeType | null } | null;
+}
+
+/**
+ * Correct the `type` on already-applied text filters against the facet list the
+ * backend returned, and hand back the corrected array — or `undefined` when
+ * every type already matched (the common case: nothing to redo).
+ *
+ * Attribute filters are typed (TEXT / ENUM / …) and the backend silently matches
+ * NOTHING when the type is wrong — no error, just zero results. The server
+ * builds its filters from the URL, which carries names and values but no types,
+ * so ENUM-backed facets server-rendered an empty listing on any refreshed,
+ * pasted or shared filtered URL. The client path never hit this: it resolves
+ * each type from the facet list it already holds.
+ *
+ * Facets come back correctly typed even on a zero-result response, so one
+ * corrected retry is enough and nothing extra is paid when the guess was right.
+ *
+ * Ported from propeller-next's lib/listingParams.ts — keep the three copies in
+ * step (PWP-992).
+ */
+export function retypeTextFilters(
+  applied: ProductTextFilterInput[] | undefined,
+  facets: readonly FacetTypeSource[] | undefined,
+): ProductTextFilterInput[] | undefined {
+  if (!applied?.length || !facets?.length) return undefined;
+
+  let changed = false;
+  const corrected = applied.map((filter) => {
+    const facet = facets.find((f) => f?.attributeDescription?.name === filter.name);
+    const real = facet?.type ?? facet?.attributeDescription?.type;
+    if (!real || real === filter.type) return filter;
+    changed = true;
+    return { ...filter, type: real };
+  });
+
+  return changed ? corrected : undefined;
 }

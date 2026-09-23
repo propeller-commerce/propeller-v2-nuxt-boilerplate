@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Scan app/locales/<lang>/*.json and write app/locales/_registry.ts.
-// English ('en') is canonical. Missing namespaces in other languages emit a
-// warning and are written as {} placeholders so the build stays green.
+// English ('en') is the canonical namespace set when it is present; a shop
+// scaffolded without it (--locales=fr,nl) falls back to whichever locale
+// defines the most namespaces. A namespace a locale does not ship resolves to
+// the canonical dictionary, never to {} — an empty namespace renders every
+// label as an empty string.
 //
 // Path differs from propeller-vue (app/locales/) — Nuxt's srcDir is app/, so
 // the dictionaries land under app/locales/ instead. The shape of the
@@ -35,22 +38,33 @@ if (langs.length === 0) {
   console.error('No language directories found under app/locales/');
   process.exit(1);
 }
-if (!langs.includes('en')) {
-  console.error('app/locales/en/ is required as the canonical namespace set');
+// 'en' is the canonical namespace set whenever it is present. It is not
+// always: --locales=fr,nl scaffolds a shop with no en/ folder, and this used to
+// exit 1 so the app could never start (PWP-977). Fall back to whichever present
+// locale defines the most namespaces.
+const canonicalLang = langs.includes('en')
+  ? 'en'
+  : langs.reduce((best, l) => (listNamespaces(l).length > listNamespaces(best).length ? l : best), langs[0]);
+
+const canonicalNamespaces = listNamespaces(canonicalLang);
+if (canonicalNamespaces.length === 0) {
+  console.error(`app/locales/${canonicalLang}/ has no .json namespaces to act as the canonical set`);
   process.exit(1);
 }
+if (canonicalLang !== 'en') {
+  console.warn(`No app/locales/en/ — using '${canonicalLang}' as the canonical namespace set.`);
+}
 
-const canonicalNamespaces = listNamespaces('en');
 const warnings = [];
 
 for (const lang of langs) {
-  if (lang === 'en') continue;
+  if (lang === canonicalLang) continue;
   const present = new Set(listNamespaces(lang));
   for (const ns of canonicalNamespaces) {
-    if (!present.has(ns)) warnings.push(`Missing app/locales/${lang}/${ns}.json (will be {} at runtime)`);
+    if (!present.has(ns)) warnings.push(`Missing app/locales/${lang}/${ns}.json (falls back to '${canonicalLang}')`);
   }
   for (const ns of present) {
-    if (!canonicalNamespaces.includes(ns)) warnings.push(`Extra app/locales/${lang}/${ns}.json (no matching app/locales/en/${ns}.json)`);
+    if (!canonicalNamespaces.includes(ns)) warnings.push(`Extra app/locales/${lang}/${ns}.json (no matching app/locales/${canonicalLang}/${ns}.json)`);
   }
 }
 
@@ -62,7 +76,7 @@ lines.push('');
 for (const lang of langs) {
   const present = listNamespaces(lang);
   for (const ns of present) {
-    if (lang !== 'en' && !canonicalNamespaces.includes(ns)) continue;
+    if (lang !== canonicalLang && !canonicalNamespaces.includes(ns)) continue;
     const id = `${lang}${ns}`;
     lines.push(`import ${id} from './${lang}/${ns}.json';`);
   }
@@ -77,7 +91,11 @@ for (const lang of langs) {
     if (present.includes(ns)) {
       lines.push(`    ${ns}: ${lang}${ns},`);
     } else {
-      lines.push(`    ${ns}: {} as Record<string, string>,`);
+      // Point at the canonical dictionary rather than an empty object. `{}`
+      // rendered every label as an empty string, so a locale that ships no
+      // translations produced a blank storefront (PWP-978) instead of the
+      // English fallback the CLI's own scaffold message promises.
+      lines.push(`    ${ns}: ${canonicalLang}${ns},`);
     }
   }
   lines.push('  },');
@@ -85,7 +103,9 @@ for (const lang of langs) {
 lines.push('} as const;');
 lines.push('');
 lines.push("export type RegistryLocale = keyof typeof registry;");
-lines.push("export type RegistryNamespace = keyof typeof registry['en'];");
+lines.push(`export type RegistryNamespace = keyof typeof registry['${canonicalLang}'];`);
+lines.push('');
+lines.push(`export const CANONICAL_LOCALE = '${canonicalLang}';`);
 lines.push('');
 
 writeFileSync(join(LOCALES_DIR, '_registry.ts'), lines.join('\n'), 'utf8');
