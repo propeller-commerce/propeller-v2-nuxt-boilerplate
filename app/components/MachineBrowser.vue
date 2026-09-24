@@ -25,6 +25,10 @@
           :paginationLabels="paginationLabels"
           :filtersLabels="filtersLabels"
           :toolbarLabels="toolbarLabels"
+          :productCardLabels="productCardLabels"
+          :addToCartLabels="addToCartLabels"
+          :stockLabels="itemStockLabels"
+          :priceLabels="productPriceLabels"
         />
         <template #fallback>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -77,6 +81,13 @@ const machinesLabels = useTranslations('Machines');
 const paginationLabels = useTranslations('GridPagination');
 const filtersLabels = useTranslations('GridFilters');
 const toolbarLabels = useTranslations('GridToolbar');
+// The parts list inside <MachineGrid> is a <ProductGrid>, so it needs the same
+// four dictionaries the category and cluster listings pass — without them the
+// machine chrome translates but the cards keep English stock/price/cart text.
+const productCardLabels = useTranslations('ProductCard');
+const addToCartLabels = useTranslations('AddToCart');
+const itemStockLabels = useTranslations('ItemStock');
+const productPriceLabels = useTranslations('ProductPrice');
 
 const segments = computed<string[]>(() => {
   const raw = route.params.slug;
