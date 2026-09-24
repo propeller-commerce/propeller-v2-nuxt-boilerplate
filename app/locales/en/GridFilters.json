@@ -1,4 +1,13 @@
 {
+  "allProducts": "All products",
+  "applyFilters": "Show results",
+  "atLeast": "at least",
+  "availability": "Availability",
+  "closeFilters": "Close filters",
+  "inStock": "In stock",
   "noFiltersAvailable": "No filters available",
-  "priceRange": "Price Range"
+  "pcs": "pcs",
+  "priceRange": "Price Range",
+  "quantityDecrease": "Decrease quantity",
+  "quantityIncrease": "Increase quantity"
 }

@@ -30,14 +30,24 @@ function parseFiltersFromQuery(query: Record<string, unknown>): Record<string, s
   return out;
 }
 
-export function useListingParams(defaultSortField = 'CATEGORY_ORDER') {
+/**
+ * `defaultSortOrder` must match the one given to `buildListingQuery`: the
+ * writer omits the param when it equals the default, so a reader defaulting to
+ * something else parses the written URL back as the wrong order — with DESC
+ * hardcoded here, an ASC-defaulted listing could never be sorted ascending.
+ */
+export function useListingParams(
+  defaultSortField = 'CATEGORY_ORDER',
+  defaultSortOrder: 'ASC' | 'DESC' = 'DESC',
+) {
   const route = useRoute();
   return computed<ListingParams>(() => {
     const q = route.query as Record<string, unknown>;
     const page = Math.max(1, parseInt(String(q.page ?? '1'), 10) || 1);
     const offset = Math.max(1, parseInt(String(q.offset ?? '12'), 10) || 12);
     const sortField = typeof q.sortField === 'string' ? q.sortField : defaultSortField;
-    const sortOrder = q.sortOrder === 'ASC' ? 'ASC' : 'DESC';
+    const sortOrder =
+      q.sortOrder === 'ASC' ? 'ASC' : q.sortOrder === 'DESC' ? 'DESC' : defaultSortOrder;
     const filters = parseFiltersFromQuery(q);
     const minPrice = q.minPrice !== undefined ? Number(q.minPrice) : undefined;
     const maxPrice = q.maxPrice !== undefined ? Number(q.maxPrice) : undefined;

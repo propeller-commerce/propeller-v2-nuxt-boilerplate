@@ -19,6 +19,8 @@ import {
   type ProductTextFilterInput,
   type AttributeType,
   type ProductPriceFilterInput,
+  type PriceCalculateProductInput,
+  type UserBulkPriceProductInput,
   type ClusterConfigSetting,
   type Contact,
   type Customer,
@@ -36,6 +38,7 @@ import {
   imageVariantFiltersLarge,
   channelId,
   baseCategoryId,
+  configuration,
 } from '../../app/utils/config';
 import { cachedSdkFetch, stableStringify } from './cache';
 import { ANONYMOUS_CACHE_TTL_SECONDS, TAG_CATALOG, tagFor } from './tags';
@@ -211,10 +214,43 @@ export async function resolveBaseCategoryId(infra: ServerInfra): Promise<number>
 }
 
 function resolveCompanyId(infra: ServerInfra): number | undefined {
-  if (infra.selectedCompanyId !== undefined) return infra.selectedCompanyId;
   const user = infra.user;
+  // Guard first: returning the cookie before this check leaked a companyId
+  // onto customer and anonymous fetches.
   if (!user || !('contactId' in user)) return undefined;
-  return (user as Contact).company?.companyId;
+  const contact = user as Contact;
+  // `selected_company_id` is a non-httpOnly cookie, so it is user-writable and
+  // can outlive the identity that set it. The API rejects a company the contact
+  // is not a member of ("Unauthorized use of companyId") — an error the fetch
+  // catch blocks do NOT swallow, so an unchecked value fails the page. Validate
+  // against the contact's companies and fall back to their default.
+  if (infra.selectedCompanyId !== undefined) {
+    const match = contact.companies?.items?.find(
+      (c) => c?.companyId === infra.selectedCompanyId
+    );
+    if (match?.companyId !== undefined) return match.companyId;
+  }
+  return contact.company?.companyId;
+}
+
+/**
+ * Price scoping for a logged-in viewer: contact/customer plus the company they
+ * are acting for. Without it the backend prices for the bearer token's default
+ * company, so a contact who switched company saw their default company's prices
+ * while the cart charged the selected one's (PWP-1015).
+ *
+ * Returns `undefined` for anonymous visitors on purpose — their request bodies
+ * stay unchanged, and only anonymous fetches are cacheable.
+ */
+function buildPriceInput(infra: ServerInfra): PriceCalculateProductInput | undefined {
+  const user = infra.user;
+  if (!user) return undefined;
+  const input: PriceCalculateProductInput = { taxZone: configuration.taxZone };
+  if ('contactId' in user) input.contactId = (user as Contact).contactId;
+  else if ('customerId' in user) input.customerId = (user as Customer).customerId;
+  const companyId = resolveCompanyId(infra);
+  if (companyId != null) input.companyId = companyId;
+  return input;
 }
 
 function buildFilterInput(opts: ListingFetchOptions): Partial<CategoryProductSearchInput> {
@@ -238,6 +274,7 @@ export async function fetchProduct(
   language?: string
 ): Promise<FetchedProduct | null> {
   const lang = language ?? infra.language;
+  const priceInput = buildPriceInput(infra);
   const key = `sdk:product:${productId}:${stableStringify({ lang })}`;
   const tags = [TAG_CATALOG, tagFor('product'), tagFor('product', productId)];
 
@@ -253,6 +290,13 @@ export async function fetchProduct(
           language: lang,
           imageSearchFilters,
           imageVariantFilters: imageVariantFiltersLarge,
+          // Logged-in only, so the anonymous body is unchanged.
+          ...(priceInput
+            ? {
+                priceCalculateProductInput: priceInput,
+                userBulkPriceProductInput: priceInput as UserBulkPriceProductInput,
+              }
+            : {}),
         });
         return result ? (toPlain(result) as FetchedProduct) : null;
       } catch (e) {
@@ -278,6 +322,7 @@ export async function fetchCategory(
   const sortInputs: ProductSortInput[] = [{ field: sortField, order: sortOrder }];
   const userId = await listingUserId(infra);
   const companyId = resolveCompanyId(infra);
+  const priceInput = buildPriceInput(infra);
 
   const categoryProductSearchInput: CategoryProductSearchInput = {
     language: lang,
@@ -307,6 +352,8 @@ export async function fetchCategory(
           filterAvailableAttributeInput: FILTER_AVAILABLE_ATTRIBUTE_INPUT,
           imageSearchFilters: imageSearchFiltersGrid,
           imageVariantFilters: imageVariantFiltersMedium,
+          // Logged-in only, so the anonymous body is unchanged.
+          ...(priceInput ? { priceCalculateProductInput: priceInput } : {}),
         });
 
       try {
@@ -347,6 +394,7 @@ export async function fetchSearch(
   const sortInputs: ProductSortInput[] = [{ field: sortField, order: sortOrder }];
   const userId = await listingUserId(infra);
   const companyId = resolveCompanyId(infra);
+  const priceInput = buildPriceInput(infra);
 
   const categoryProductSearchInput: CategoryProductSearchInput = {
     language: lang,
@@ -377,6 +425,8 @@ export async function fetchSearch(
           filterAvailableAttributeInput: FILTER_AVAILABLE_ATTRIBUTE_INPUT,
           imageSearchFilters: imageSearchFiltersGrid,
           imageVariantFilters: imageVariantFiltersMedium,
+          // Logged-in only, so the anonymous body is unchanged.
+          ...(priceInput ? { priceCalculateProductInput: priceInput } : {}),
         });
 
       try {
@@ -412,6 +462,7 @@ export async function fetchCluster(
   language?: string
 ): Promise<Cluster | null> {
   const lang = language ?? infra.language;
+  const priceInput = buildPriceInput(infra);
   const key = `sdk:cluster:${clusterId}:${stableStringify({ lang })}`;
   const tags = [TAG_CATALOG, tagFor('cluster'), tagFor('cluster', clusterId)];
 
@@ -436,6 +487,13 @@ export async function fetchCluster(
               attributeDescription: { names: attributeNames },
             },
           }),
+          // Logged-in only, so the anonymous body is unchanged.
+          ...(priceInput
+            ? {
+                priceCalculateProductInput: priceInput,
+                userBulkPriceProductInput: priceInput as UserBulkPriceProductInput,
+              }
+            : {}),
         });
         return result ? (toPlain(result) as Cluster) : null;
       } catch (e) {

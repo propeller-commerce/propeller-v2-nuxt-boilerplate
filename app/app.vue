@@ -41,6 +41,7 @@ const validatedCompanyId = computed<number | undefined>(() => {
 <template>
   <PropellerProvider
     :user="auth.user ?? null"
+    :is-authenticated="!!auth.token"
     :company-id="validatedCompanyId"
     :language="language.language"
     :include-tax="price.includeTax"

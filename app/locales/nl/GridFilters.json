@@ -1,4 +1,13 @@
 {
+  "allProducts": "Alle producten",
+  "applyFilters": "Toon resultaten",
+  "atLeast": "minimaal",
+  "availability": "Beschikbaarheid",
+  "closeFilters": "Filters sluiten",
+  "inStock": "Op voorraad",
   "noFiltersAvailable": "Geen filters beschikbaar",
-  "priceRange": "Prijsklasse"
+  "pcs": "stuks",
+  "priceRange": "Prijsklasse",
+  "quantityDecrease": "Aantal verlagen",
+  "quantityIncrease": "Aantal verhogen"
 }

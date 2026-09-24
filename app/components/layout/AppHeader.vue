@@ -154,6 +154,8 @@
                 :showTotals="true"
                 iconClassName="text-white hover:text-white hover:bg-white/10"
                 :labels="cartIconAndSidebarLabels"
+                :cartItemLabels="cartItemLabels"
+                :cartBonusItemsLabels="cartBonusItemsLabels"
               />
             </ClientOnly>
           </div>
@@ -322,6 +324,8 @@ const searchBarLabels = useTranslations('SearchBar');
 const accountIconAndMenuLabels = useTranslations('AccountIconAndMenu');
 const loginFormLabels = useTranslations('LoginForm');
 const cartIconAndSidebarLabels = useTranslations('CartIconAndSidebar');
+const cartItemLabels = useTranslations('CartItem');
+const cartBonusItemsLabels = useTranslations('CartBonusItems');
 const menuLabels = useTranslations('Menu');
 
 const headerRef = ref<HTMLElement | null>(null);
