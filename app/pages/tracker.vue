@@ -1,8 +1,11 @@
+<!-- Client-only: this page self-fetches /api/tracker, which on the server
+     would mean a self-request with the wrong base URL and no cookies, plus a
+     database round trip per render of a page nobody crawls — and this app has
+     real page-cache infrastructure (server/utils/cache.ts) to protect.
+
+     The comment sits above <template> rather than inside it: a comment counts
+     as a root node, and the template-root rule rejects one there. -->
 <template>
-  <!-- Client-only: this page self-fetches /api/tracker, which on the server
-       would mean a self-request with the wrong base URL and no cookies, plus a
-       database round trip per render of a page nobody crawls — and this app has
-       real page-cache infrastructure (server/utils/cache.ts) to protect. -->
   <ClientOnly>
     <div class="viz-root min-h-screen">
     <div class="flex flex-col lg:flex-row">

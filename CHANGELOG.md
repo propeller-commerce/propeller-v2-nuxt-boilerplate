@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-09-24
+
+Consumes vue-ui 0.22.0, and adds ESLint — this app had none.
+
+### Added
+
+- **ESLint.** `npm run lint` (and `lint:fix`), via the official `@nuxt/eslint`
+  module. The generated base config is the only one that knows Nuxt's
+  auto-imports; a hand-written config reads every `useRoute`, `$fetch` and
+  `defineNuxtPlugin` as an undefined global. `postinstall` already runs
+  `nuxt prepare`, so a fresh clone can lint straight after `npm install`.
+
+  Result: **0 errors, 124 warnings** (120 `any`). Template formatting rules are
+  off, with the reason in the config — 555 of the initial findings were
+  `vue/attribute-hyphenation`, and this codebase deliberately writes template
+  attributes in camelCase to match the prop names `propeller-v2-vue-ui`
+  declares, exactly as propeller-vue and propeller-next do.
+
+- A `Machines` dictionary (en + nl). Nuxt had none, so "Machines", "View",
+  "Loading…" and "No machines found." were always English regardless of the
+  storefront language.
+
+### Fixed
+
+- **Seventeen real lint findings**, all fixed rather than silenced: duplicate
+  imports of the same module in four files (`account/addresses`, the cluster and
+  product pages, `server/utils/trackingQueries`), and a root-level comment in
+  `tracker.vue` that counts as a second template root.
+- **`MachineBrowser` passed neither `machineCardLabels` nor `rootTitle`**, so
+  the machine grid's own copy was always English even for a Dutch visitor. Both
+  are now wired to the new dictionary. (PWP-995)
+- **"Qty in machine" and "Search parts…" showed in English on a Dutch shop.**
+  The package read them from `toolbarLabels`, so they belonged to no dictionary
+  anyone would think to translate; vue-ui 0.22.0 moves them to
+  `machineCardLabels`. (PWP-995a)
+- **A machine listed in one language now opens.** `MachineBrowser` passes the
+  new `machineLanguages`, built from the generated locale registry, so a slug
+  authored only in NL resolves even though the tree language is EN. (PWP-993)
+- **Prices follow the VAT setting again.** Carried in from vue-ui 0.22.0: an
+  absent boolean prop read as `false` rather than "not given", so
+  `<PropellerProvider includeTax>` was ignored and every price rendered excl.
+  VAT. Also restores the machine grid's stock/price/add-to-cart defaults and
+  orderlist scoping.
+
 ## [1.13.0] - 2026-09-23
 
 Consumes SDK 0.17.0 and vue-ui 0.20.0 — spare-parts machines with no slug in

@@ -33,7 +33,20 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
 
-  modules: ['@pinia/nuxt', '@nuxtjs/i18n', '@nuxtjs/tailwindcss'],
+  modules: ['@pinia/nuxt', '@nuxtjs/i18n', '@nuxtjs/tailwindcss', '@nuxt/eslint'],
+
+  // This app had no linting at all. `@nuxt/eslint` generates the flat config
+  // that knows about Nuxt's auto-imports and generated `.nuxt` types, which a
+  // hand-written config gets wrong (every `useRoute`, `defineNuxtPlugin` and
+  // `$fetch` reads as undefined). `eslint.config.mjs` at the repo root extends
+  // what it produces; `standalone: false` lets it include the type-aware rules.
+  eslint: {
+    config: {
+      // Stylistic rules are formatting, not correctness. Enabling them would
+      // rewrite most of the templates and bury the real findings.
+      stylistic: false,
+    },
+  },
 
   hooks: {
     // Tailwind v4 + @nuxtjs/tailwindcss v7-beta uses CSS-based @source scanning

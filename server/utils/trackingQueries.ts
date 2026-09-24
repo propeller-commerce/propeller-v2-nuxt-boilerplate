@@ -1,5 +1,4 @@
-import { trackingQuery } from './trackingDb';
-import { rangeToUtc } from './trackingDb';
+import { rangeToUtc, trackingQuery } from './trackingDb';
 
 /**
  * The dashboard's query allowlist.

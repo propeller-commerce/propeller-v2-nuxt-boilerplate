@@ -1,6 +1,6 @@
 {
   "name": "propeller-nuxt",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +13,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
     "clean": "node -e \"const{rmSync}=require('fs');for(const d of ['.nuxt','.output','dist'])rmSync(d,{recursive:true,force:true})\"",
     "test:tracking": "node --test --experimental-strip-types app/lib/tracking/*.test.ts",
     "tracking:init": "node --experimental-strip-types scripts/tracking-init.ts"
@@ -24,7 +26,7 @@
     "@propeller-commerce/propeller-v2-mollie": "^0.2.4",
     "@propeller-commerce/propeller-v2-msp": "^0.1.2",
     "@propeller-commerce/propeller-v2-punchout": "^0.1.0",
-    "@propeller-commerce/propeller-v2-vue-ui": "^0.20.0",
+    "@propeller-commerce/propeller-v2-vue-ui": "^0.22.0",
     "@vueuse/core": "^14.2.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -40,9 +42,11 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@nuxt/eslint": "^1.17.0",
     "@nuxtjs/tailwindcss": "^7.0.0-beta.0",
     "@types/lodash.debounce": "^4.0.9",
     "@types/qs": "^6.15.0",
+    "eslint": "^10.11.0",
     "nuxt": "^3.14.0",
     "typescript": "~5.6.0",
     "vue-tsc": "^2.1.10"

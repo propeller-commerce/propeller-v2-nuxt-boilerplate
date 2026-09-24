@@ -12,6 +12,9 @@
           :source="source"
           :sourceIds="sourceIds"
           :machineLanguage="machineLanguage"
+          :machineLanguages="MACHINE_LANGUAGES"
+          :rootTitle="machinesLabels.rootTitle"
+          :machineCardLabels="machinesLabels"
           :listing="listing"
           :onListingChange="onListingChange"
           :configuration="machineConfiguration"
@@ -51,6 +54,7 @@ import { useCartStore } from '~/stores/cart';
 import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref } from '~/utils/config';
 import {
+  MACHINE_LANGUAGES,
   MACHINE_MAX_DEPTH,
   MACHINE_SORT_FIELD_DEFAULT,
   MACHINE_SORT_ORDER_DEFAULT,
@@ -69,6 +73,7 @@ const companyStore = useCompanyStore();
 const cartStore = useCartStore();
 const languageStore = useLanguageStore();
 
+const machinesLabels = useTranslations('Machines');
 const paginationLabels = useTranslations('GridPagination');
 const filtersLabels = useTranslations('GridFilters');
 const toolbarLabels = useTranslations('GridToolbar');
