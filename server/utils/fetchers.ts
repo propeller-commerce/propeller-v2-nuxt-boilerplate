@@ -275,6 +275,8 @@ export async function fetchProduct(
 ): Promise<FetchedProduct | null> {
   const lang = language ?? infra.language;
   const priceInput = buildPriceInput(infra);
+  const userId = await listingUserId(infra);
+  const companyId = resolveCompanyId(infra);
   const key = `sdk:product:${productId}:${stableStringify({ lang })}`;
   const tags = [TAG_CATALOG, tagFor('product'), tagFor('product', productId)];
 
@@ -290,6 +292,8 @@ export async function fetchProduct(
           language: lang,
           imageSearchFilters,
           imageVariantFilters: imageVariantFiltersLarge,
+          ...(userId !== undefined && { userId }),
+          ...(companyId !== undefined && { companyId }),
           // Logged-in only, so the anonymous body is unchanged.
           ...(priceInput
             ? {
@@ -463,6 +467,8 @@ export async function fetchCluster(
 ): Promise<Cluster | null> {
   const lang = language ?? infra.language;
   const priceInput = buildPriceInput(infra);
+  const userId = await listingUserId(infra);
+  const companyId = resolveCompanyId(infra);
   const key = `sdk:cluster:${clusterId}:${stableStringify({ lang })}`;
   const tags = [TAG_CATALOG, tagFor('cluster'), tagFor('cluster', clusterId)];
 
@@ -482,6 +488,8 @@ export async function fetchCluster(
           language: lang,
           imageSearchFilters: imageSearchFiltersGrid,
           imageVariantFilters: imageVariantFiltersLarge,
+          ...(userId !== undefined && { userId }),
+          ...(companyId !== undefined && { companyId }),
           ...(attributeNames.length > 0 && {
             attributeResultSearchInput: {
               attributeDescription: { names: attributeNames },
