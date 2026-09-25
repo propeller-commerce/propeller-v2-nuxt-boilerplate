@@ -301,6 +301,9 @@ import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
 import { cartItems as cartGa4Items, cartValue } from '~/lib/tracking/events';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.checkout });
+
 const addressCardLabels = useTranslations('AddressCard');
 const addressSelectorLabels = useTranslations('AddressSelector');
 const cartCarriersLabels = useTranslations('CartCarriers');

@@ -23,6 +23,9 @@ import { useCompanyStore } from '~/stores/company';
 import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.accountAuthorizationSettings });
+
 /**
  * Who may approve what, and up to which amount — a config change here silently
  * changes who can spend. One event with an `action` beats three names: the

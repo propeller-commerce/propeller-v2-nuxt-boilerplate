@@ -28,6 +28,9 @@ import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';
 import { useTranslations } from '~/composables/useTranslations';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.accountQuoteRequests });
+
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
 const router = useRouter();

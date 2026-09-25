@@ -52,6 +52,9 @@ import { parseQuickOrderXlsx } from '~/lib/parseQuickOrderXlsx';
 import { track } from '~/lib/tracking/bus';
 import { cartItems } from '~/lib/tracking/events';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.quickOrder });
+
 definePageMeta({ middleware: 'auth' });
 
 const cartStore = useCartStore();

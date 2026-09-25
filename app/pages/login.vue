@@ -33,6 +33,9 @@ import { localizeHref } from '~/utils/config';
 import { useTranslations } from '~/composables/useTranslations';
 import { useAfterLogin } from '~/composables/useAfterLogin';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.login });
+
 const loginFormLabels = useTranslations('LoginForm');
 
 const router = useRouter();

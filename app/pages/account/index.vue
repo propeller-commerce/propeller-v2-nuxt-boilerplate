@@ -27,6 +27,9 @@ import { useCompanyStore } from '~/stores/company';
 import { COUNTRIES } from '~/utils/countries';
 import { useTranslations } from '~/composables/useTranslations';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.account });
+
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
 const authStore = useAuthStore();

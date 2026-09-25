@@ -24,6 +24,9 @@ import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';
 import { useTranslations } from '~/composables/useTranslations';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.forgotPassword });
+
 const router = useRouter();
 const languageStore = useLanguageStore();
 const forgotPasswordLabels = useTranslations('ForgotPassword');

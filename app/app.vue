@@ -36,6 +36,15 @@ const validatedCompanyId = computed<number | undefined>(() => {
 // the new scope. We deliberately don't call refreshNuxtData() here —
 // firing it alongside the per-page watchers double-triggers the request
 // and the first one gets AbortController-canceled.
+
+// Site-wide title. A function template, not '%s | Name', so a page that sets
+// no title of its own renders the site name once rather than "Name | Name".
+const siteName = config.public.siteName as string;
+useHead({
+  title: siteName,
+  titleTemplate: (title?: string) =>
+    title && title !== siteName ? `${title} | ${siteName}` : siteName,
+});
 </script>
 
 <template>

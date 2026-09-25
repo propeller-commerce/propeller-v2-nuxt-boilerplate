@@ -126,6 +126,9 @@ import { useTranslations } from '~/composables/useTranslations';
 import AccessErrorView from '~/components/access/AccessErrorView.vue';
 import { classifyApiError } from '~/lib/errors';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.accountQuoteRequestDetail });
+
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
 const route = useRoute();

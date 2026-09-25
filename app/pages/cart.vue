@@ -98,6 +98,9 @@ import { track } from '~/lib/tracking/bus';
 // alias rather than rename the template binding.
 import { cartItems as cartGa4Items, cartValue, trackCartDiff } from '~/lib/tracking/events';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.cart });
+
 const cartItemLabels = useTranslations('CartItem');
 const cartBonusItemsLabels = useTranslations('CartBonusItems');
 const cartSummaryLabels = useTranslations('CartSummary');

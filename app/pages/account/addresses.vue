@@ -117,6 +117,9 @@ import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
 import type { EventName } from '~/lib/tracking/taxonomy';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.accountAddresses });
+
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
 const authStore = useAuthStore();

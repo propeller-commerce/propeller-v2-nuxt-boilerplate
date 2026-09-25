@@ -34,6 +34,9 @@ import { useCartStore } from '~/stores/cart';
 import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.accountFavoriteDetail });
+
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
 const route = useRoute();

@@ -122,6 +122,9 @@ import { orderItems } from '~/lib/tracking/events';
 import AccessErrorView from '~/components/access/AccessErrorView.vue';
 import { classifyApiError } from '~/lib/errors';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.accountOrderDetail });
+
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
 const orderSummaryLabels = useTranslations('OrderSummary');

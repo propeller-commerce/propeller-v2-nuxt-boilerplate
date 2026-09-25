@@ -127,6 +127,9 @@ import { track } from '~/lib/tracking/bus';
 import AccessErrorView from '~/components/access/AccessErrorView.vue';
 import { classifyApiError } from '~/lib/errors';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.accountQuoteDetail });
+
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
 const route = useRoute();

@@ -37,6 +37,9 @@ import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
 import { trackLogin } from '~/lib/tracking/bootstrap';
 
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.register });
+
 const registerFormLabels = useTranslations('RegisterForm');
 
 const router = useRouter();
