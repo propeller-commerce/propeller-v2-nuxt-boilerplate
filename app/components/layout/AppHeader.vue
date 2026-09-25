@@ -384,11 +384,11 @@ const isContact = computed(() => !!(authStore.user && 'contactId' in authStore.u
 // sale, ...) belong to a shop's own nav once it has pages for them.
 const navLinks = computed(() => {
   const links = [
-    { label: 'Blog', url: '/blog', highlight: false },
+    { label: headerLabels.value.blog || 'Blog', url: '/blog', highlight: false },
   ];
   if (isContact.value) {
     links.unshift({ label: headerLabels.value.quickOrder, url: '/quick-order', highlight: false });
-    links.unshift({ label: 'Machines', url: '/machines', highlight: false });
+    links.unshift({ label: headerLabels.value.machines || 'Machines', url: '/machines', highlight: false });
   }
   return links;
 });

@@ -26,7 +26,7 @@
               <NuxtLink :to="localizeHref('/terms-conditions', languageStore.language)" class="hover:text-white transition-colors">{{ t.termsConditions }}</NuxtLink>
             </li>
             <li>
-              <NuxtLink :to="localizeHref('/blog', languageStore.language)" class="hover:text-white transition-colors">Blog</NuxtLink>
+              <NuxtLink :to="localizeHref('/blog', languageStore.language)" class="hover:text-white transition-colors">{{ t.blog }}</NuxtLink>
             </li>
           </ul>
         </div>
