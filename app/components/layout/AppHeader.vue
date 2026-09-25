@@ -318,6 +318,7 @@ const menuTreeProp = computed<MenuCategory[] | undefined>(() =>
   props.menuTree.length ? props.menuTree : undefined
 );
 
+const headerLabels = useTranslations('Header');
 const companySwitcherLabels = useTranslations('CompanySwitcher');
 const priceToggleLabels = useTranslations('PriceToggle');
 const searchBarLabels = useTranslations('SearchBar');
@@ -374,19 +375,19 @@ const showSearch = ref(true);
 const showAccount = ref(true);
 const showCart = ref(true);
 const showCategoriesMenu = ref(true);
-const categoriesMenuLabel = ref('Browse Categories');
+const categoriesMenuLabel = computed(() => headerLabels.value.browseCategories);
 // Contact-only: the machines section reads the contact's MY_INSTALLATIONS, so
 // the nav entry only appears for a logged-in contact. Mirrors propeller-next's
 // Header `isContact` gate.
 const isContact = computed(() => !!(authStore.user && 'contactId' in authStore.user));
+// Only routes this boilerplate actually ships. Campaign links (new arrivals,
+// sale, ...) belong to a shop's own nav once it has pages for them.
 const navLinks = computed(() => {
   const links = [
     { label: 'Blog', url: '/blog', highlight: false },
-    { label: 'New Arrivals', url: '/new-arrivals', highlight: false },
-    { label: 'Sale', url: '/sale', highlight: true },
   ];
   if (isContact.value) {
-    links.unshift({ label: 'Quick order', url: '/quick-order', highlight: false });
+    links.unshift({ label: headerLabels.value.quickOrder, url: '/quick-order', highlight: false });
     links.unshift({ label: 'Machines', url: '/machines', highlight: false });
   }
   return links;

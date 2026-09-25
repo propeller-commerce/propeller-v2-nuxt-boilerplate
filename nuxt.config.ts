@@ -21,6 +21,18 @@ const SUPPORTED_LANGUAGES = (process.env.BOILERPLATE_LOCALES || 'nl,en')
   .map((code) => code.trim().toUpperCase())
   .filter(Boolean);
 
+/** BCP 47 tag per language code, for the routing module's `language` field. */
+const LOCALE_TAGS: Record<string, string> = {
+  NL: 'nl-NL',
+  EN: 'en-US',
+  FR: 'fr-FR',
+  DE: 'de-DE',
+  ES: 'es-ES',
+  IT: 'it-IT',
+  PL: 'pl-PL',
+  PT: 'pt-PT',
+};
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-01',
@@ -166,6 +178,10 @@ export default defineNuxtConfig({
       siteName: process.env.NUXT_PUBLIC_SITE_NAME || 'Propeller Shop',
       logoUrl: process.env.NUXT_PUBLIC_LOGO_URL || '/propeller_logo.webp',
       logoAlt: process.env.NUXT_PUBLIC_LOGO_ALT || 'Propeller',
+      // Comma-separated product ids for the home page's featured slider.
+      // Empty = no featured block (ids are tenant-specific, so a fresh
+      // scaffold ships none rather than another tenant's).
+      featuredProductIds: process.env.NUXT_PUBLIC_FEATURED_PRODUCT_IDS || '',
       footerDescription: process.env.NUXT_PUBLIC_FOOTER_DESCRIPTION || '',
       footerEmail: process.env.NUXT_PUBLIC_FOOTER_EMAIL || 'info@propeller.com',
       footerPhone: process.env.NUXT_PUBLIC_FOOTER_PHONE || '+31 (0) 20 000 0000',
@@ -186,16 +202,19 @@ export default defineNuxtConfig({
     },
   },
 
+  // Routing only — the shop's own strings come from `useTranslations`, not from
+  // this module's dictionaries. Locales are derived from the same env the rest
+  // of the config reads, so `--locales` / `--default-locale` decide which
+  // languages have a URL: the default unprefixed, the others under `/<code>`.
   i18n: {
-    defaultLocale: 'nl',
-    // NL unprefixed, /en/ for English. Matches propeller-next localizeHref()
-    // output byte-for-byte.
+    defaultLocale: DEFAULT_LANGUAGE.toLowerCase(),
+    // Default language unprefixed, /<code>/ for the rest. Matches
+    // propeller-next localizeHref() output byte-for-byte.
     strategy: 'prefix_except_default',
-    locales: [
-      { code: 'nl', iso: 'nl-NL', file: 'nl.json' },
-      { code: 'en', iso: 'en-US', file: 'en.json' },
-    ],
-    langDir: 'locales',
+    locales: SUPPORTED_LANGUAGES.map((code) => ({
+      code: code.toLowerCase(),
+      language: LOCALE_TAGS[code] ?? code.toLowerCase(),
+    })),
     detectBrowserLanguage: false,
     // Opt out of the v9 optimizer (deprecated, slated for removal in v10).
     bundle: { optimizeTranslationDirective: false },

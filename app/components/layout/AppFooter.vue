@@ -8,28 +8,22 @@
         </div>
 
         <div>
-          <h4 class="text-sm font-semibold uppercase tracking-wider text-slate-200 mb-4">Shop</h4>
+          <h4 class="text-sm font-semibold uppercase tracking-wider text-slate-200 mb-4">{{ t.shopTitle }}</h4>
           <ul class="space-y-3 text-sm text-slate-400">
             <li>
-              <NuxtLink :to="localizeHref('/', languageStore.language)" class="hover:text-white transition-colors">All products</NuxtLink>
-            </li>
-            <li>
-              <NuxtLink :to="localizeHref('/new-arrivals', languageStore.language)" class="hover:text-white transition-colors">New arrivals</NuxtLink>
-            </li>
-            <li>
-              <NuxtLink :to="localizeHref('/sale', languageStore.language)" class="hover:text-white transition-colors">Sale</NuxtLink>
+              <NuxtLink :to="localizeHref('/', languageStore.language)" class="hover:text-white transition-colors">{{ t.allProducts }}</NuxtLink>
             </li>
           </ul>
         </div>
 
         <div>
-          <h4 class="text-sm font-semibold uppercase tracking-wider text-slate-200 mb-4">Support</h4>
+          <h4 class="text-sm font-semibold uppercase tracking-wider text-slate-200 mb-4">{{ t.supportTitle }}</h4>
           <ul class="space-y-3 text-sm text-slate-400">
             <li>
-              <NuxtLink :to="localizeHref('/account', languageStore.language)" class="hover:text-white transition-colors">My account</NuxtLink>
+              <NuxtLink :to="localizeHref('/account', languageStore.language)" class="hover:text-white transition-colors">{{ t.myAccount }}</NuxtLink>
             </li>
             <li>
-              <NuxtLink :to="localizeHref('/terms-conditions', languageStore.language)" class="hover:text-white transition-colors">Terms &amp; conditions</NuxtLink>
+              <NuxtLink :to="localizeHref('/terms-conditions', languageStore.language)" class="hover:text-white transition-colors">{{ t.termsConditions }}</NuxtLink>
             </li>
             <li>
               <NuxtLink :to="localizeHref('/blog', languageStore.language)" class="hover:text-white transition-colors">Blog</NuxtLink>
@@ -38,7 +32,7 @@
         </div>
 
         <div>
-          <h4 class="text-sm font-semibold uppercase tracking-wider text-slate-200 mb-4">Contact</h4>
+          <h4 class="text-sm font-semibold uppercase tracking-wider text-slate-200 mb-4">{{ t.contactTitle }}</h4>
           <ul class="space-y-3 text-sm text-slate-400">
             <li class="flex items-start gap-2">
               <svg class="w-5 h-5 mt-0.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,15 +61,19 @@
 import { computed } from 'vue';
 import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';
+import { useTranslations } from '~/composables/useTranslations';
 
 const languageStore = useLanguageStore();
+const t = useTranslations('Footer');
 const runtimeConfig = useRuntimeConfig();
 
 const siteName = (runtimeConfig.public.siteName as string | undefined) || 'Propeller Shop';
-const description =
-  (runtimeConfig.public.footerDescription as string | undefined) ||
-  'Your trusted destination for premium electronics. Quality products, fast shipping, and exceptional support.';
+const description = computed(
+  () => (runtimeConfig.public.footerDescription as string | undefined) || t.value.description,
+);
 const email = (runtimeConfig.public.footerEmail as string | undefined) || 'info@propeller.com';
 const phone = (runtimeConfig.public.footerPhone as string | undefined) || '+1 234 567 890';
-const copyright = computed(() => `© ${new Date().getFullYear()} ${siteName}. All rights reserved.`);
+const copyright = computed(
+  () => `© ${new Date().getFullYear()} ${siteName}. ${t.value.allRightsReserved}`,
+);
 </script>
