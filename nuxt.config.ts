@@ -106,6 +106,19 @@ export default defineNuxtConfig({
     trackingDbSsl: process.env.TRACKING_DB_SSL || '',
     trackingTimezone: process.env.TRACKING_TIMEZONE || 'Europe/Amsterdam',
     revalidateSecret: process.env.REVALIDATE_SECRET || '',
+    // ── Outgoing mail (price requests) ──────────────────────────
+    // Server-only. SMTP credentials must never reach the browser.
+    mailProvider: process.env.MAIL_PROVIDER || 'smtp',
+    smtpHost: process.env.SMTP_HOST || '',
+    smtpPort: process.env.SMTP_PORT || '587',
+    smtpSecure: process.env.SMTP_SECURE || '',
+    smtpUser: process.env.SMTP_USER || '',
+    smtpPass: process.env.SMTP_PASS || '',
+    smtpFromEmail: process.env.SMTP_FROM_EMAIL || '',
+    smtpFromName: process.env.SMTP_FROM_NAME || '',
+    smtpReplyTo: process.env.SMTP_REPLY_TO || '',
+    priceRequestToEmail: process.env.PRICE_REQUEST_TO_EMAIL || '',
+    mailAccentColor: process.env.MAIL_ACCENT_COLOR || '',
     // Env override only — the channel's catalogRootId is the fallback, resolved
     // server-side by resolveBaseCategoryId(). No literal here.
     baseCategoryId: process.env.BASE_CATEGORY_ID || '',

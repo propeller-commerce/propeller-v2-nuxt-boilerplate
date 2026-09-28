@@ -61,7 +61,22 @@
               :labels="itemStockLabels"
             />
 
-            <div class="flex items-center gap-2 mt-4">
+            <!-- Orderable first, then the display mode: a non-orderable
+                 product gets no control, and a quoted price replaces
+                 add-to-cart rather than joining it. -->
+            <div v-if="priceOnRequest && (product as any).orderable !== 'N'" class="mt-4">
+              <ClientOnly>
+                <RequestPriceButton
+                  :labels="priceRequestLabels"
+                  :isAuthenticated="!!authStore.user"
+                  :onLoginClick="() => router.push(localizeHref('/login', languageStore.language))"
+                  :added="priceRequest.ready.value && priceRequest.has((product as any).sku || '')"
+                  :onRequestPrice="handleRequestPrice"
+                />
+              </ClientOnly>
+            </div>
+
+            <div v-else-if="(product as any).orderable !== 'N'" class="flex items-center gap-2 mt-4">
               <ClientOnly>
                 <AddToCart
                   :product="product as any"
@@ -156,7 +171,10 @@ import {
   ProductShortDescription,
   ProductSlider,
   ProductTabs,
+  RequestPriceButton,
   getLanguageString,
+  isPriceOnRequest,
+  usePriceRequest,
 } from '@propeller-commerce/propeller-v2-vue-ui';
 import { stripHtml } from '@propeller-commerce/propeller-v2-vue-ui/shared';
 import { isContentHidden } from '@propeller-commerce/propeller-v2-core-ui';
@@ -194,6 +212,24 @@ const productPriceLabels = useTranslations('ProductPrice');
 const productBulkPricesLabels = useTranslations('ProductBulkPrices');
 const itemStockLabels = useTranslations('ItemStock');
 const addToCartLabels = useTranslations('AddToCart');
+const priceRequestLabels = useTranslations('PriceRequest');
+const priceRequest = usePriceRequest();
+const priceOnRequest = computed<boolean>(() => isPriceOnRequest(product.value as never));
+
+/** Add to the quote list, then show it. */
+function handleRequestPrice(): void {
+  const p = product.value as Product | null;
+  if (!p) return;
+  priceRequest.add({
+    productId: p.productId,
+    code: p.sku || '',
+    name: getLanguageString(p.names, languageStore.language) || p.sku || '',
+    quantity: p.minimumQuantity || 1,
+    minQuantity: p.minimumQuantity || 1,
+    unit: p.unit || 1,
+  });
+  void router.push(localizeHref('/price-request', languageStore.language));
+}
 const addToFavoriteLabels = useTranslations('AddToFavorite');
 const productTabsLabels = useTranslations('ProductTabs');
 const productBundlesLabels = useTranslations('ProductBundles');
