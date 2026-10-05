@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-10-05
+
+### Fixed
+
+- **Anonymous visitors no longer send a stale `companyId`.** A
+  `selected_company` left in localStorage by an earlier session was kept when
+  the user was anonymous, and the backend rejects a company-scoped catalog
+  read with no bearer token, so client-side catalog fetches failed. The
+  selection is now kept only while a session exists and its profile is still
+  loading, and it is cleared once auth settles on anonymous — the
+  `userLoggedOut` event is missed on expiry, on logout in another tab and when
+  cookies are cleared. The channel’s anonymous `userId` is still sent, so
+  assortment rules are unchanged. (PWP-1001)
+
+### Changed
+
+- Pins vue-ui 0.27.0 (core-ui 0.10.0), which carries the image seam.
+
 ## [1.14.1] - 2026-09-24
 
 ### Fixed

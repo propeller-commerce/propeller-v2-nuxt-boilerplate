@@ -25,11 +25,27 @@ const validatedCompanyId = computed<number | undefined>(() => {
   const u = auth.user as
     | { company?: { companyId?: number }; companies?: { items?: { companyId?: number }[] } }
     | null;
-  if (!u) return selId;
+  // An anonymous request carries no bearer token, so the backend cannot
+  // authorize a company-scoped catalog read and rejects it outright. Keep the
+  // selection only while a session exists and its profile is still loading.
+  if (!u) return auth.token ? selId : undefined;
   const candidates = [...(u.companies?.items ?? []), ...(u.company ? [u.company] : [])];
   if (selId != null && candidates.some((c) => c?.companyId === selId)) return selId;
   return u.company?.companyId ?? undefined;
 });
+
+// A `selected_company` from a previous session outlives logout whenever the
+// `userLoggedOut` event is missed (expiry, another tab, cleared cookies), and
+// then scopes anonymous catalog reads to a company the request cannot
+// authorize. Drop it once auth has settled on anonymous.
+watch(
+  () => [auth.isLoading, auth.token, auth.user, company.companyId] as const,
+  ([loading, token, user, selected]) => {
+    if (loading || token || user || selected == null) return;
+    company.clearSelectedCompany();
+  },
+  { immediate: true },
+);
 
 // Tier-2 scope (companyId / includeTax) flows through useFetch query
 // params on the catalog pages, so each page's own watcher re-fetches with
