@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-10-05
+
+### Fixed
+
+- **The header menu, search suggestions and quick order found nothing.**
+  `app/utils/config.ts` is a plain module, so its `process.env.NUXT_PUBLIC_*`
+  reads are undefined in the browser bundle and empty in a built Nitro server
+  — the shipped client carried `baseCategoryId: void 0` even with
+  `BASE_CATEGORY_ID` set. The menu renders only when that id is defined, and
+  the search and quick-order lookups scoped to category 0, so no request was
+  sent at all. These values are now inlined at build time by `vite.define`,
+  the same mechanism the language constants already used for this exact
+  problem. (PWP-1044, PWP-1045, PWP-1046)
+- **`channelId`, `menuDepth`, `portalMode`, `currency`, `currencyCode`,
+  `siteUrl` and `urlPattern` were stuck on their defaults** for the same
+  reason, whatever the environment set. `portalMode` pinning to `open` meant a
+  semi-closed shop’s content gate was a no-op on the client.
+
 ## [1.15.0] - 2026-10-05
 
 ### Fixed

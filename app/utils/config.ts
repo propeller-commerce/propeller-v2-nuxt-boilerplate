@@ -2,11 +2,13 @@
  * Verbatim port of `propeller-vue/frontend/src/lib/config.ts` — the
  * canonical configuration object the propeller-v2-vue-ui package consumes.
  *
- * Only difference: env-var access is via `process.env.NUXT_PUBLIC_*`
- * (which Nuxt inlines into both server and client bundles) instead of
- * `import.meta.env.VITE_*` (Vite-only). Same values, same shape, same
- * runtime behavior. Keep this file structurally identical to the Vue
- * consumer so changes flow in either direction with minimal diff.
+ * Only difference: env values arrive as `__UPPER_SNAKE__` constants inlined by
+ * `vite.define` in nuxt.config.ts, instead of `import.meta.env.VITE_*`
+ * (Vite-only). Nuxt does NOT inline `process.env.NUXT_PUBLIC_*` here: this is a
+ * plain module, so those reads are undefined in the browser bundle and empty in
+ * a built Nitro server. Same values, same shape, same runtime behavior. Keep
+ * this file structurally identical to the Vue consumer so changes flow in
+ * either direction with minimal diff.
  */
 import type { Category, Cluster, Product } from '@propeller-commerce/propeller-sdk-v2';
 import { Fit, Format } from '@propeller-commerce/propeller-sdk-v2';
@@ -32,7 +34,7 @@ export const imageVariantFiltersLarge = {
   transformations: [{ name: 'large', transformation: { format: Format.WEBP, height: 800, width: 800, fit: Fit.BOUNDS } }],
 };
 
-const URL_PATTERN = process.env.NUXT_PUBLIC_URL_PATTERN || 'page/id/slug';
+const URL_PATTERN = typeof __URL_PATTERN__ === 'string' ? __URL_PATTERN__ : 'page/id/slug';
 
 /**
  * Languages with localized URL prefixing. The DEFAULT_LANGUAGE entry stays
@@ -45,6 +47,14 @@ const URL_PATTERN = process.env.NUXT_PUBLIC_URL_PATTERN || 'page/id/slug';
 // and which nothing ever set, so the default language was pinned to 'NL'.
 declare const __DEFAULT_LANGUAGE__: string | undefined;
 declare const __SUPPORTED_LANGUAGES__: string[] | undefined;
+declare const __BASE_CATEGORY_ID__: number | null | undefined;
+declare const __MENU_DEPTH__: number | undefined;
+declare const __CHANNEL_ID__: number | undefined;
+declare const __PORTAL_MODE__: string | undefined;
+declare const __SITE_URL__: string | undefined;
+declare const __URL_PATTERN__: string | undefined;
+declare const __CURRENCY__: string | undefined;
+declare const __CURRENCY_CODE__: string | undefined;
 
 export const DEFAULT_LANGUAGE = (
   typeof __DEFAULT_LANGUAGE__ === 'string' ? __DEFAULT_LANGUAGE__ : 'NL'
@@ -75,16 +85,13 @@ function buildEntityUrl(page: string, id?: number | string, slug?: string, patte
 // channel: `resolveBaseCategoryId()` server-side, seeded to the client through
 // the `baseCategoryId` state below. A hardcoded id is wrong on any shop whose
 // catalog root isn't that number.
-export const baseCategoryId: number | undefined = (() => {
-  const raw = process.env.NUXT_PUBLIC_BASE_CATEGORY_ID || process.env.BASE_CATEGORY_ID;
-  const parsed = raw ? parseInt(raw, 10) : NaN;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-})();
-export const menuDepth = parseInt(process.env.NUXT_PUBLIC_MENU_DEPTH || '3', 10);
+export const baseCategoryId: number | undefined =
+  typeof __BASE_CATEGORY_ID__ === 'number' ? __BASE_CATEGORY_ID__ : undefined;
+export const menuDepth = typeof __MENU_DEPTH__ === 'number' ? __MENU_DEPTH__ : 3;
 // Set NUXT_PUBLIC_CHANNEL_ID per environment to the channel orders/quotes are
 // placed on. The account order/quote lists filter by `channelIds: [channelId]`,
 // so a wrong value silently returns zero results.
-export const channelId = parseInt(process.env.NUXT_PUBLIC_CHANNEL_ID || process.env.CHANNEL_ID || '1', 10);
+export const channelId = typeof __CHANNEL_ID__ === 'number' ? __CHANNEL_ID__ : 1;
 
 /**
  * Portal access mode — kebab-case `'open'` | `'semi-closed'` | `'closed'`.
@@ -92,17 +99,15 @@ export const channelId = parseInt(process.env.NUXT_PUBLIC_CHANNEL_ID || process.
  * `isContentHidden(portalMode, user)` matches on these exact strings; using
  * any other casing leaves the semi-closed gate as a no-op.
  */
-export const portalMode = (
-  process.env.NUXT_PUBLIC_PORTAL_MODE || 'open'
-).trim().toLowerCase() === 'semiclosed' ? 'semi-closed' :
-  (process.env.NUXT_PUBLIC_PORTAL_MODE || 'open').trim().toLowerCase();
+const RAW_PORTAL_MODE = (typeof __PORTAL_MODE__ === 'string' ? __PORTAL_MODE__ : 'open').trim().toLowerCase();
+export const portalMode = RAW_PORTAL_MODE === 'semiclosed' ? 'semi-closed' : RAW_PORTAL_MODE;
 
 /**
  * Absolute origin of this site (no trailing slash). Used to build absolute
  * URLs in schema.org / JSON-LD payloads emitted by ProductJsonLd / ClusterJsonLd
  * / ItemListJsonLd. When unset, JSON-LD emits path-only URLs.
  */
-export const siteUrl = (process.env.NUXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+export const siteUrl = (typeof __SITE_URL__ === 'string' ? __SITE_URL__ : '').replace(/\/$/, '');
 
 /**
  * Prepends `/<lang>` to a path when `language` is non-default. Idempotent —
@@ -151,10 +156,10 @@ export const configuration = {
   imageVariantFiltersLarge,
   urlPattern: URL_PATTERN,
   taxZone: 'NL',
-  currency: process.env.NUXT_PUBLIC_CURRENCY || '€',
+  currency: typeof __CURRENCY__ === 'string' ? __CURRENCY__ : '€',
   /** ISO 4217 currency code — used by JSON-LD / schema.org payloads (`priceCurrency`).
    *  Distinct from `currency` above, which is the display symbol shown to humans. */
-  currencyCode: process.env.NUXT_PUBLIC_CURRENCY_CODE || 'EUR',
+  currencyCode: typeof __CURRENCY_CODE__ === 'string' ? __CURRENCY_CODE__ : 'EUR',
   baseCategoryId,
   menuDepth,
   // Track attributes fetched with the viewer (mirrors propeller-next data/config.ts).

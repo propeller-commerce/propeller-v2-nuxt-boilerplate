@@ -33,6 +33,24 @@ const LOCALE_TAGS: Record<string, string> = {
   PT: 'pt-PT',
 };
 
+// Same build-time inlining as the language constants above. `app/utils/config.ts`
+// is a plain module, so its `process.env` reads are undefined in the browser
+// bundle and empty in a built Nitro server — `baseCategoryId` arrived as
+// undefined, which emptied the header menu and made search suggestions and
+// quick order search category 0. (PWP-1044/1045/1046)
+const BASE_CATEGORY_ID = (() => {
+  const raw = process.env.NUXT_PUBLIC_BASE_CATEGORY_ID || process.env.BASE_CATEGORY_ID;
+  const parsed = raw ? parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+})();
+const MENU_DEPTH = parseInt(process.env.NUXT_PUBLIC_MENU_DEPTH || '3', 10);
+const CHANNEL_ID = parseInt(process.env.NUXT_PUBLIC_CHANNEL_ID || process.env.CHANNEL_ID || '1', 10);
+const PORTAL_MODE = (process.env.NUXT_PUBLIC_PORTAL_MODE || 'open').trim().toLowerCase();
+const SITE_URL = (process.env.NUXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+const URL_PATTERN = process.env.NUXT_PUBLIC_URL_PATTERN || 'page/id/slug';
+const CURRENCY = process.env.NUXT_PUBLIC_CURRENCY || '€';
+const CURRENCY_CODE = process.env.NUXT_PUBLIC_CURRENCY_CODE || 'EUR';
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-01',
@@ -254,6 +272,14 @@ export default defineNuxtConfig({
     define: {
       __DEFAULT_LANGUAGE__: JSON.stringify(DEFAULT_LANGUAGE),
       __SUPPORTED_LANGUAGES__: JSON.stringify(SUPPORTED_LANGUAGES),
+      __BASE_CATEGORY_ID__: JSON.stringify(BASE_CATEGORY_ID ?? null),
+      __MENU_DEPTH__: JSON.stringify(MENU_DEPTH),
+      __CHANNEL_ID__: JSON.stringify(CHANNEL_ID),
+      __PORTAL_MODE__: JSON.stringify(PORTAL_MODE),
+      __SITE_URL__: JSON.stringify(SITE_URL),
+      __URL_PATTERN__: JSON.stringify(URL_PATTERN),
+      __CURRENCY__: JSON.stringify(CURRENCY),
+      __CURRENCY_CODE__: JSON.stringify(CURRENCY_CODE),
     },
     resolve: {
       alias: {
