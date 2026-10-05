@@ -195,7 +195,7 @@ const slug = computed(() => route.params.slug as string);
 
 const listing = useListingParams('CATEGORY_ORDER');
 
-const { data: seededCategory } = await useFetch('/api/catalog/category', {
+const { data: seededCategory, status: categoryStatus } = await useFetch('/api/catalog/category', {
   query: computed(() => ({
     id: categoryId.value,
     language: languageStore.language,
@@ -221,9 +221,17 @@ const { data: seededCategory } = await useFetch('/api/catalog/category', {
   ],
 });
 
-if (!seededCategory.value) {
+// Server-only: on the client `companyId` starts null (localStorage is invisible
+// to SSR), so hydration re-keys and `data` is briefly null mid-refetch.
+if (import.meta.server && !seededCategory.value) {
   throw createError({ statusCode: 404, statusMessage: 'Category not found' });
 }
+
+// Client equivalent, once a fetch has actually settled.
+watch([seededCategory, categoryStatus], ([c, s]) => {
+  if (s === 'pending' || c) return;
+  showError({ statusCode: 404, statusMessage: 'Category not found' });
+});
 
 const category = ref<Category | null>(seededCategory.value as Category | null);
 const seededProducts = ((seededCategory.value as any)?.products as ProductsResponse | undefined) ?? null;

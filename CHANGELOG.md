@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-10-05
+
+### Fixed
+
+- **Product and category pages no longer flip to "Niet gevonden" after a full
+  page load.** Both pages key their `useFetch` on `companyStore.companyId` and
+  watch it. That store is seeded from `localStorage`, which the server cannot
+  read, so the value is `null` during SSR and the real id once the client
+  hydrates — the key changes, the fetch re-runs, and `data` is briefly `null`
+  while it is in flight. The top-level `createError` fired on that transient
+  null and replaced a correctly rendered page with a 404 about a second after
+  load. Only logged-in contacts were affected, since anonymous visitors have no
+  company. The server-side 404 is unchanged; the client now waits for a fetch
+  to settle before deciding a page is missing.
+
+### Changed
+
+- **Pin `propeller-v2-vue-ui` 0.28.0** (core-ui 0.11.0). Client-side listings
+  and `<ProductSlider>` stop ignoring the company's orderlist, cart quantity
+  steppers keep the line on the order grid, and add to cart recovers when the
+  remembered cart no longer exists.
+
 ## [1.16.0] - 2026-10-05
 
 ### Fixed

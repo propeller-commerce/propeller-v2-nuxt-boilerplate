@@ -239,7 +239,7 @@ const clusterCardLabels = useTranslations('ClusterCard');
 
 const productId = computed(() => parseInt(route.params.productId as string));
 
-const { data: product, error } = await useFetch('/api/catalog/product', {
+const { data: product, error, status } = await useFetch('/api/catalog/product', {
   query: computed(() => ({
     id: productId.value,
     language: languageStore.language,
@@ -254,9 +254,17 @@ const { data: product, error } = await useFetch('/api/catalog/product', {
   ],
 });
 
-if (!product.value && !error.value) {
+// Server-only: on the client `companyId` starts null (localStorage is invisible
+// to SSR), so hydration re-keys and `data` is briefly null mid-refetch.
+if (import.meta.server && !product.value && !error.value) {
   throw createError({ statusCode: 404, statusMessage: 'Product not found' });
 }
+
+// Client equivalent, once a fetch has actually settled.
+watch([product, status], ([p, s]) => {
+  if (s === 'pending' || p || error.value) return;
+  showError({ statusCode: 404, statusMessage: 'Product not found' });
+});
 
 const images = computed(
   () =>
