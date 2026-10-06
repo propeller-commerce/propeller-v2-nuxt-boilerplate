@@ -183,5 +183,4 @@ watch(
   { immediate: true }
 );
 
-useHead({ title: 'Shopping Cart' });
 </script>

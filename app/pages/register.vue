@@ -143,5 +143,4 @@ async function handleAfterRegistration(
   router.push(localizeHref('/account', userLang || languageStore.language));
 }
 
-useHead({ title: 'Register' });
 </script>

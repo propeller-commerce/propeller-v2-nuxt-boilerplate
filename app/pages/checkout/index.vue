@@ -62,7 +62,7 @@
                   :enableDelete="false"
                   :enableSetDefault="false"
                   :onEdit="(addr: any) => handleAddressSubmit(addr, 'INVOICE', false)"
-                  :countries="COUNTRIES"
+                  :countries="localizedCountries"
                   :labels="addressCardLabels"
                 />
                 <template v-else>
@@ -74,7 +74,7 @@
                     :showIcp="false"
                     :beforeSave="() => { loading = true; error = null; }"
                     :onEdit="(addr: any) => handleAddressSubmit(addr, 'INVOICE')"
-                    :countries="COUNTRIES"
+                    :countries="localizedCountries"
                     :labels="addressCardLabels"
                   />
                   <label v-if="!authStore.isAuthenticated" class="flex items-center gap-2 text-sm cursor-pointer">
@@ -113,7 +113,7 @@
                     :enableSetDefault="false"
                     :enableEdit="true"
                     :onEdit="(addr: any) => handleAddressSubmit(addr, 'DELIVERY', false)"
-                    :countries="COUNTRIES"
+                    :countries="localizedCountries"
                     :labels="addressCardLabels"
                   />
                   <div class="flex items-center gap-4">
@@ -123,7 +123,7 @@
                       v-if="authStore.isAuthenticated"
                       :addressType="AddressType.delivery"
                       :onAddressSelected="(addr: any) => handleAddressSubmit(addr, 'DELIVERY', true)"
-                      :countries="COUNTRIES"
+                      :countries="localizedCountries"
                       :labels="addressSelectorLabels"
                       class="ml-auto"
                     />
@@ -138,7 +138,7 @@
                     :showIcp="false"
                     :beforeSave="() => { loading = true; error = null; }"
                     :onEdit="(addr: any) => handleAddressSubmit(addr, 'DELIVERY')"
-                    :countries="COUNTRIES"
+                    :countries="localizedCountries"
                     :labels="addressCardLabels"
                   />
                 </template>
@@ -224,6 +224,8 @@
                     :onTermsAndConditionsClick="openTermsAndConditions"
                     :onPurchaseButtonClick="(_cart: any, reference: string, notes: string) => handlePlaceOrder(reference, notes)"
                     :labels="cartOverviewLabels"
+                    :paymethodLabels="paymethodNames"
+                    :countries="localizedCountries"
                   />
                 </template>
               </div>
@@ -294,7 +296,7 @@ import { useCartStore } from '~/stores/cart';
 import { useCompanyStore } from '~/stores/company';
 import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref } from '~/utils/config';
-import { COUNTRIES } from '~/utils/countries';
+import { getCountries } from '~/utils/countries';
 import { restoreManagerCart } from '~/utils/cartHelpers';
 import { isOnAccountMethod, activePspProvider, pspApiBase, pspStashKey } from '~/utils/payments';
 import { useTranslations } from '~/composables/useTranslations';
@@ -309,6 +311,9 @@ const addressSelectorLabels = useTranslations('AddressSelector');
 const cartCarriersLabels = useTranslations('CartCarriers');
 const cartOverviewLabels = useTranslations('CartOverview');
 const cartPaymethodsLabels = useTranslations('CartPaymethods');
+// Payment methods arrive as codes (ON_ACCOUNT, INVOICE_NET); without this the
+// review step printed the raw code. Keyed by lower-cased code.
+const paymethodNames = useTranslations('PaymethodNames');
 const cartSummaryLabels = useTranslations('CartSummary');
 const molliePaymentLabels = useTranslations('MolliePayment');
 const deliveryDateLabels = useTranslations('DeliveryDate');
@@ -320,6 +325,8 @@ const authStore = useAuthStore();
 const cartStore = useCartStore();
 const languageStore = useLanguageStore();
 const companyStore = useCompanyStore();
+
+const localizedCountries = computed(() => getCountries(languageStore.language));
 
 const { $graphqlClient } = useNuxtApp();
 
@@ -714,5 +721,4 @@ function handleAfterRequestAuthorization(updatedCart: Cart) {
 watch([() => cartStore.cart, () => authStore.isAuthenticated], () => { initializeCheckout(); }, { immediate: false });
 onMounted(() => initializeCheckout());
 
-useHead({ title: 'Checkout' });
 </script>

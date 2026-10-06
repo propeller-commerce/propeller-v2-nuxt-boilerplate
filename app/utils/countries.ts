@@ -26,3 +26,23 @@ export function getCountryName(code: string | null | undefined, list?: Country[]
   const match = effective.find((c) => c.code === code);
   return match?.name ?? code;
 }
+
+/** Dutch country names, keyed by ISO 3166-1 alpha-2 code. */
+export const COUNTRIES_NL: Country[] = [
+  { code: 'NL', name: 'Nederland' },
+  { code: 'BE', name: 'België' },
+  { code: 'DE', name: 'Duitsland' },
+  { code: 'FR', name: 'Frankrijk' },
+  { code: 'UK', name: 'Verenigd Koninkrijk' },
+  { code: 'US', name: 'Verenigde Staten' },
+];
+
+/**
+ * Localized country list for the active language. Pass the result as the
+ * `countries` prop so dropdowns and address displays render in the page
+ * language instead of the built-in English names.
+ */
+export function getCountries(language?: string): Country[] {
+  if ((language || '').toUpperCase() === 'NL') return COUNTRIES_NL;
+  return COUNTRIES;
+}

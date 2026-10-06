@@ -250,5 +250,4 @@ async function handleSaveNewAddress(address: any) {
   }
 }
 
-useHead({ title: 'Addresses' });
 </script>

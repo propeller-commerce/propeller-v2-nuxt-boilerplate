@@ -1,0 +1,20 @@
+{
+  "thankYouOrderTitle": "Bedankt voor uw bestelling!",
+  "thankYouQuoteTitle": "Bedankt voor uw offerteaanvraag!",
+  "thankYouOrderText": "Uw bestelling is succesvol geplaatst en wordt verwerkt.",
+  "thankYouQuoteText": "Uw offerteaanvraag is succesvol verzonden. We nemen zo snel mogelijk contact met u op.",
+  "orderSummaryTitle": "Bestelsamenvatting",
+  "orderOverviewTitle": "Besteloverzicht",
+  "quoteSummaryTitle": "Offertesamenvatting",
+  "quoteOverviewTitle": "Offerteoverzicht",
+  "quoteNumber": "Aanvraagnummer",
+  "quoteDate": "Aanvraagdatum",
+  "viewQuoteHistory": "Offertegeschiedenis bekijken",
+  "colProduct": "Product",
+  "colQuantity": "Aantal",
+  "colPrice": "Prijs",
+  "viewOrderHistory": "Bestelgeschiedenis bekijken",
+  "continueShopping": "Verder winkelen",
+  "questionsBefore": "Als u vragen heeft, neem dan",
+  "contactLink": "contact op met onze klantenservice"
+}

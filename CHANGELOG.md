@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-10-06
+
+### Fixed
+
+- **Page titles are translated and no longer duplicated.** Eighteen pages
+  called `useHead` twice — once with the translated title and again with a
+  hardcoded English one, which won because it ran last. So a Dutch shop showed
+  "My account", "Shopping Cart", "Checkout" and "Order #576". Each page now
+  sets its title once; the order, quote, quote-request and favourites detail
+  pages keep the identifier in the title and take the rest from the
+  translation ("Bestelgegevens #576").
+- **Country names follow the page language.** The checkout imported a static
+  English `COUNTRIES` list, so the review step and every address form on a
+  Dutch shop read "Netherlands", "Belgium", … while `/account` showed
+  "België". `getCountries(language)` is now used, matching the Vue boilerplate,
+  and the review step and order summary receive it too.
+- **The checkout review and thank-you page name the payment method.** Neither
+  passed `paymethodLabels` and the app had no `PaymethodNames` dictionary, so
+  the stored code reached the page ("Betaling: INVOICE_NET").
+- **The thank-you page is translated.** Its heading, intro and order-summary
+  title were hardcoded English; the `CheckoutThankYou` namespace now supplies
+  them.
+- **The incl./excl. VAT choice survives a reload.** The price store carried a
+  `seedFromCookie` for SSR that nothing ever called, so the server always
+  rendered the incl-VAT default, shipped it in the payload, and Pinia's
+  hydration overwrote the value the client had read from the cookie. A new
+  server plugin seeds it — for guests too, since the toggle needs no login.
+- **The product page shows the quote label instead of an amount for
+  price-on-request products.** The page resolved the flag for the request
+  button but never passed `priceOnRequest` to `ProductPrice`.
+- **The cart line's delete button is named in the page language**, and **quick
+  order names a price-on-request SKU** in it as well; neither key existed.
+
+### Changed
+
+- **Pin `propeller-v2-vue-ui` 0.29.0.** The product heading now follows the
+  page language instead of falling back to Dutch, `OrderItemCard`'s
+  development warnings fire once per process rather than once per line, and
+  `SearchBar` resolves its placeholder from `labels` — which is what makes the
+  Dutch search placeholder work here.
+
 ## [1.17.0] - 2026-10-05
 
 ### Fixed

@@ -31,5 +31,4 @@ const router = useRouter();
 const languageStore = useLanguageStore();
 const forgotPasswordLabels = useTranslations('ForgotPassword');
 
-useHead({ title: 'Forgot password' });
 </script>

@@ -11,12 +11,10 @@
           </svg>
         </div>
         <h1 class="text-4xl font-bold text-foreground mb-4">
-          {{ isQuoteMode ? 'Thank You for Your Quote Request!' : 'Thank You for Your Order!' }}
+          {{ isQuoteMode ? t.thankYouQuoteTitle : t.thankYouOrderTitle }}
         </h1>
         <p class="text-lg text-muted-foreground">
-          {{ isQuoteMode
-            ? 'Your quote request has been successfully submitted. We will get back to you shortly.'
-            : 'Your order has been successfully placed and is being processed.' }}
+          {{ isQuoteMode ? t.thankYouQuoteText : t.thankYouOrderText }}
         </p>
       </div>
 
@@ -109,8 +107,9 @@
           <div class="bg-card rounded-[var(--radius-container)] shadow-sm border border-border p-6">
             <OrderSummary
               :order="order as any"
-              :countries="COUNTRIES"
-              title="Order Summary"
+              :countries="localizedCountries"
+              :title="isQuoteMode ? t.quoteSummaryTitle : t.orderSummaryTitle"
+              :paymethodLabels="paymethodNames"
               :showReference="true"
               :showNotes="true"
               :showDeliveryAddress="true"
@@ -187,12 +186,14 @@ import { useCartStore } from '~/stores/cart';
 import { restoreManagerCart } from '~/utils/cartHelpers';
 import { useLanguageStore } from '~/stores/language';
 import { configuration, localizeHref } from '~/utils/config';
-import { COUNTRIES } from '~/utils/countries';
+import { getCountries } from '~/utils/countries';
 import { useTranslations } from '~/composables/useTranslations';
 import AccessErrorView from '~/components/access/AccessErrorView.vue';
 import { classifyApiError } from '~/lib/errors';
 
 const orderSummaryLabels = useTranslations('OrderSummary');
+const t = useTranslations('CheckoutThankYou');
+const paymethodNames = useTranslations('PaymethodNames');
 const orderItemCardLabels = useTranslations('OrderItemCard');
 const orderBonusItemsLabels = useTranslations('OrderBonusItems');
 const molliePaymentLabels = useTranslations('MolliePayment');
@@ -201,6 +202,8 @@ const route = useRoute();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
 const languageStore = useLanguageStore();
+
+const localizedCountries = computed(() => getCountries(languageStore.language));
 const { $graphqlClient } = useNuxtApp();
 
 const orderId = computed(() => route.params.orderId as string);

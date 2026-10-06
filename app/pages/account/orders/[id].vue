@@ -123,7 +123,7 @@ import AccessErrorView from '~/components/access/AccessErrorView.vue';
 import { classifyApiError } from '~/lib/errors';
 
 const pageTitles = useTranslations('PageTitles');
-useHead({ title: () => pageTitles.value.accountOrderDetail });
+
 
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
@@ -204,5 +204,5 @@ onMounted(async () => {
   );
 });
 
-useHead(() => ({ title: `Order #${route.params.id}` }));
+useHead(() => ({ title: `${pageTitles.value.accountOrderDetail} #${route.params.id}` }));
 </script>

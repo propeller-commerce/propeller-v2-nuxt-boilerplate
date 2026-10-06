@@ -35,6 +35,7 @@
               :price="(product as any).price"
               :includeTax="priceStore.includeTax"
               :labels="productPriceLabels"
+              :priceOnRequest="priceOnRequest"
             />
 
             <div v-if="surchargeLines.length > 0" class="text-sm text-muted-foreground">

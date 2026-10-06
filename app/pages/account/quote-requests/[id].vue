@@ -127,7 +127,7 @@ import AccessErrorView from '~/components/access/AccessErrorView.vue';
 import { classifyApiError } from '~/lib/errors';
 
 const pageTitles = useTranslations('PageTitles');
-useHead({ title: () => pageTitles.value.accountQuoteRequestDetail });
+
 
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
@@ -213,5 +213,5 @@ onMounted(async () => {
   await fetchOrder(parseInt(quoteId));
 });
 
-useHead(() => ({ title: `Quote #${quoteId}` }));
+useHead(() => ({ title: `${pageTitles.value.accountQuoteRequestDetail} #${quoteId}` }));
 </script>

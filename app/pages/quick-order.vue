@@ -53,7 +53,7 @@ import { track } from '~/lib/tracking/bus';
 import { cartItems } from '~/lib/tracking/events';
 
 const pageTitles = useTranslations('PageTitles');
-useHead({ title: () => pageTitles.value.quickOrder });
+
 
 definePageMeta({ middleware: 'auth' });
 
@@ -124,5 +124,5 @@ function onMissingCodes(codes: string[]) {
   }
 }
 
-useHead(() => ({ title: t.value.pageTitle || 'Quick order' }));
+useHead(() => ({ title: t.value.pageTitle || pageTitles.value.quickOrder }));
 </script>

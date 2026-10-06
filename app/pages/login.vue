@@ -57,5 +57,4 @@ async function handleLoginSuccess(
   router.push(redirect);
 }
 
-useHead({ title: 'Login' });
 </script>

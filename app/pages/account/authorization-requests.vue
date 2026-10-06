@@ -72,5 +72,4 @@ function handleAfterAccept(acceptedCart: Cart) {
   router.push(localizeHref('/cart', languageStore.language));
 }
 
-useHead({ title: 'Authorization requests' });
 </script>

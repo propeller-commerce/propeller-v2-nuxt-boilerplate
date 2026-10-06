@@ -34,5 +34,4 @@ const authStore = useAuthStore();
 const languageStore = useLanguageStore();
 const favoriteListsLabels = useTranslations('FavoriteLists');
 
-useHead({ title: 'Favorites' });
 </script>

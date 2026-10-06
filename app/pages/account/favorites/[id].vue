@@ -35,7 +35,7 @@ import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
 
 const pageTitles = useTranslations('PageTitles');
-useHead({ title: () => pageTitles.value.accountFavoriteDetail });
+
 
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
@@ -85,5 +85,5 @@ async function handleItemsDelete(items: { id: string; type: 'product' | 'cluster
   );
 }
 
-useHead(() => ({ title: listName.value || 'Favorites' }));
+useHead(() => ({ title: listName.value || pageTitles.value.accountFavoriteDetail }));
 </script>

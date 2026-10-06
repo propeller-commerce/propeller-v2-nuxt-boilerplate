@@ -43,5 +43,4 @@ const channelId = Number(runtimeConfig.public.channelId ?? 1);
 
 const labels = useTranslations('OrderList');
 
-useHead({ title: 'Quotes' });
 </script>

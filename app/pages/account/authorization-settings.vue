@@ -53,5 +53,4 @@ function isContact(u: Contact | Customer | null): u is Contact {
   return u !== null && 'contactId' in u;
 }
 
-useHead({ title: 'Authorization settings' });
 </script>

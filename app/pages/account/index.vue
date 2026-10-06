@@ -36,5 +36,4 @@ const authStore = useAuthStore();
 const companyStore = useCompanyStore();
 const userDetailsLabels = useTranslations('UserDetails');
 
-useHead({ title: 'My account' });
 </script>
