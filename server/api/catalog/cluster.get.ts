@@ -14,5 +14,14 @@ export default defineEventHandler(async (event) => {
     includeTax: includeTaxParam,
     selectedCompanyId: Number.isFinite(companyIdParam) ? companyIdParam : undefined,
   });
-  return fetchCluster(infra, id, typeof q.language === 'string' ? q.language : undefined);
+  try {
+    return await fetchCluster(infra, id, typeof q.language === 'string' ? q.language : undefined);
+  } catch (e) {
+    // See the note in product.get.ts — a cluster outside the assortment must
+    // read as "no cluster" so the page 404s (PWP-1015).
+    if (/not found|CLUSTER_NOT_FOUND|PRODUCT_NOT_FOUND/i.test((e as { message?: string })?.message ?? '')) {
+      return null;
+    }
+    throw e;
+  }
 });

@@ -20,9 +20,9 @@
 
 <script setup lang="ts">
 /**
- * Nuxt error page. Without this file Nuxt renders its built-in one, which
- * serialises the Pinia payload and throws (`obj.hasOwnProperty is not a
- * function`) — turning every 404 into a 500.
+ * Nuxt error page. The 404-as-500 crash is fixed in
+ * `plugins/normalize-error-payload.server.ts`, not here — this page only
+ * decides what a 404 and a generic error look like.
  */
 import { computed } from 'vue';
 import type { NuxtError } from '#app';

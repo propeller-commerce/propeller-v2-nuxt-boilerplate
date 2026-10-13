@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.1] - 2026-10-13
+
+### Fixed
+
+- **Every 404 answered HTTP 500 to a browser.** Nuxt builds the SSR error from
+  `getQuery()` on `/__nuxt_error`, which returns a null-prototype object.
+  Pinia 2.3.1's skipHydrate reducer calls `obj.hasOwnProperty(...)` while
+  walking the payload, and its `isPlainObject` accepts a null-prototype object
+  because the toString tag is still `[object Object]` — so the call threw
+  `obj.hasOwnProperty is not a function`, the render died and the response
+  degraded to 500. Only requests sending `Accept: text/html` reproduced it;
+  plain curl got a JSON 404, which is why an earlier verification missed it.
+  A server plugin now restores the object's prototype before serialisation.
+  Fixed upstream in pinia 3, which needs `@pinia/nuxt` bumped first — the
+  plugin is removable once that lands.
+- **A missing product or cluster answered HTTP 200.** The detail pages fetch
+  through `/api/catalog/product` and `/api/catalog/cluster`, where a
+  not-found resolver error surfaced as a 500. `useFetch` recorded that as
+  `error`, and both pages' 404 guards skip when an error is present — so
+  neither the server throw nor the client `showError` ever fired and an empty
+  page rendered with a generic title. Both routes now treat a not-found
+  resolver error as "no record", which is what the guards expect.
+
 ## [1.19.0] - 2026-10-13
 
 ### Fixed
