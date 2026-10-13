@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-10-13
+
+### Fixed
+
+- **The VAT switch in the header showed the wrong state after a reload.**
+  `AppHeader` passed `includeTax`, which `PriceToggle` does not declare — it
+  takes `value` — so the switch fell back to its own default while the prices
+  and the cookie were correct, and its first click only re-synced the label.
+  A stray `onToggle` prop went with it.
+- **Four pages kept an English tab title on a Dutch shop:** account invoices,
+  account price requests, search and the thank-you page. Each now reads its
+  title from the translations like every other page.
+- **The search page's empty state was hardcoded English too** — the heading,
+  the advice line and the homepage button. Adds the `SearchPage` namespace,
+  taken from the Vue boilerplate so the key set matches.
+- **Bank transfer showed a raw payment code.** Added `bank_transfer` to the
+  payment-name dictionary under every spelling the lower-cased code can arrive
+  in.
+- **The authorization-request detail now shows a breakdown that adds up**
+  (via vue-ui 0.30.0) — subtotal, discount, transaction costs, shipping and the
+  per-level VAT rows. Adds the `subtotal`, `discount`, `transactionCosts`,
+  `shippingCosts` and `vat` label keys, plus the `closeLabel` key the other two
+  apps already had.
+- **Cart quantity steppers no longer move the wrong way** (via vue-ui 0.30.0)
+  for a quantity that is off the `min + n*step` grid.
+
+### Changed
+
+- vue-ui `^0.29.0` → `^0.30.0` (core-ui 0.12.0 transitively).
+
 ## [1.18.0] - 2026-10-06
 
 ### Fixed

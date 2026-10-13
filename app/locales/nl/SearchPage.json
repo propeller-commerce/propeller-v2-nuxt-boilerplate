@@ -1,0 +1,9 @@
+{
+  "searchTitle": "Producten zoeken",
+  "searchTitleWithTerm": "Producten zoeken: '{term}'",
+  "noResultsFor": "Geen producten gevonden voor \"{term}\"",
+  "tryAdjusting": "Pas uw zoekterm aan, of blader door onze producten vanaf de homepagina.",
+  "goToHomepage": "Naar homepagina",
+  "seoTitle": "Producten zoeken",
+  "seoTitleWithTerm": "Zoeken: \"{term}\""
+}

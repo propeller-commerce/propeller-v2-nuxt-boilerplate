@@ -197,6 +197,7 @@ const paymethodNames = useTranslations('PaymethodNames');
 const orderItemCardLabels = useTranslations('OrderItemCard');
 const orderBonusItemsLabels = useTranslations('OrderBonusItems');
 const molliePaymentLabels = useTranslations('MolliePayment');
+const pageTitles = useTranslations('PageTitles');
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -530,5 +531,7 @@ onMounted(async () => {
   if (isPspReturn.value) await resolvePspReturn();
 });
 
-useHead(() => ({ title: isQuoteMode.value ? 'Thank you for your quote request' : 'Thank you for your order' }));
+useHead(() => ({
+  title: isQuoteMode.value ? pageTitles.value.thankYouQuote : pageTitles.value.thankYouOrder,
+}));
 </script>

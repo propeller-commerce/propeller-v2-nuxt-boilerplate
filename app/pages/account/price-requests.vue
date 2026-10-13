@@ -12,6 +12,10 @@
 </template>
 
 <script setup lang="ts">
+import { useTranslations } from '~/composables/useTranslations';
+
 definePageMeta({ layout: 'account', middleware: 'auth' });
-useHead({ title: 'Price requests' });
+
+const pageTitles = useTranslations('PageTitles');
+useHead({ title: () => pageTitles.value.accountPriceRequests });
 </script>

@@ -33,8 +33,7 @@
 
             <PriceToggle
               v-if="showVatToggle"
-              :includeTax="priceStore.includeTax"
-              :onToggle="(val: boolean) => priceStore.setIncludeTax(val)"
+              :value="priceStore.includeTax"
               :inclExclVatSwitched="(val: boolean) => priceStore.setIncludeTax(val)"
               :language="languageStore.language"
               :labels="priceToggleLabels"

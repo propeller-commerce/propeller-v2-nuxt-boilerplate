@@ -1,0 +1,9 @@
+{
+  "searchTitle": "Search Products",
+  "searchTitleWithTerm": "Search Products: '{term}'",
+  "noResultsFor": "No products found for \"{term}\"",
+  "tryAdjusting": "Try adjusting your search term, or browse our products from the homepage.",
+  "goToHomepage": "Go to homepage",
+  "seoTitle": "Search Products",
+  "seoTitleWithTerm": "Search: \"{term}\""
+}

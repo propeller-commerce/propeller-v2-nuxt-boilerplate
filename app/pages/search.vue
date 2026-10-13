@@ -10,7 +10,11 @@
       </ClientOnly>
 
       <GridTitle
-        :title="searchTerm ? `Search Products: '${searchTerm}'` : 'Search Products'"
+        :title="
+          searchTerm
+            ? searchPageLabels.searchTitleWithTerm.replace('{term}', searchTerm)
+            : searchPageLabels.searchTitle
+        "
         :labels="gridTitleLabels"
       />
 
@@ -62,17 +66,17 @@
                   <path stroke-linecap="round" stroke-linejoin="round" :stroke-width="1.5" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
                 </svg>
                 <h2 class="text-xl font-semibold text-foreground mb-2">
-                  No products found for &quot;{{ searchTerm }}&quot;
+                  {{ searchPageLabels.noResultsFor.replace('{term}', searchTerm) }}
                 </h2>
                 <p class="text-sm text-muted-foreground mb-6 max-w-md">
-                  Try adjusting your search term, or browse our products from the homepage.
+                  {{ searchPageLabels.tryAdjusting }}
                 </p>
                 <button
                   type="button"
                   class="inline-flex items-center justify-center px-4 py-2 rounded-[var(--radius-control)] bg-primary text-primary-foreground hover:bg-primary/90 transition font-medium text-sm"
                   @click="() => router.push(localizeHref('/', languageStore.language))"
                 >
-                  Go to homepage
+                  {{ searchPageLabels.goToHomepage }}
                 </button>
               </div>
             </template>
@@ -184,6 +188,7 @@ const languageStore = useLanguageStore();
 const priceStore = usePriceStore();
 
 const gridTitleLabels = useTranslations('GridTitle');
+const searchPageLabels = useTranslations('SearchPage');
 const gridFiltersLabels = useTranslations('GridFilters');
 const gridToolbarLabels = useTranslations('GridToolbar');
 const productGridLabels = useTranslations('ProductGrid');
@@ -324,7 +329,11 @@ const activeTextFilters = computed<ProductTextFilterInput[]>(() =>
 );
 
 useHead({
-  title: computed(() => (searchTerm.value ? `Search: "${searchTerm.value}"` : 'Search Products')),
+  title: computed(() =>
+    searchTerm.value
+      ? searchPageLabels.value.seoTitleWithTerm.replace('{term}', searchTerm.value)
+      : searchPageLabels.value.seoTitle,
+  ),
   meta: [{ name: 'robots', content: 'noindex, follow' }],
 });
 
