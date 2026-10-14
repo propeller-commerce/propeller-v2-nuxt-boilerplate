@@ -62,10 +62,22 @@
               :labels="itemStockLabels"
             />
 
+            <!-- Semi-closed and not logged in: no quantity field and no
+                 add-to-cart, or an anonymous visitor can order at a price the
+                 page refuses to show them (PWP-1051). -->
+            <div v-if="hideForAnonymous" class="mt-4">
+              <ClientOnly>
+                <LoginToOrderButton
+                  :labels="addToCartLabels"
+                  :onLoginClick="() => router.push(localizeHref('/login', languageStore.language))"
+                />
+              </ClientOnly>
+            </div>
+
             <!-- Orderable first, then the display mode: a non-orderable
                  product gets no control, and a quoted price replaces
                  add-to-cart rather than joining it. -->
-            <div v-if="priceOnRequest && (product as any).orderable !== 'N'" class="mt-4">
+            <div v-else-if="priceOnRequest && (product as any).orderable !== 'N'" class="mt-4">
               <ClientOnly>
                 <RequestPriceButton
                   :labels="priceRequestLabels"
@@ -163,6 +175,7 @@ import {
   AddToFavorite,
   Breadcrumbs,
   ItemStock,
+  LoginToOrderButton,
   ProductBulkPrices,
   ProductBundles,
   ProductGallery,
@@ -216,6 +229,11 @@ const addToCartLabels = useTranslations('AddToCart');
 const priceRequestLabels = useTranslations('PriceRequest');
 const priceRequest = usePriceRequest();
 const priceOnRequest = computed<boolean>(() => isPriceOnRequest(product.value as never));
+
+/** Semi-closed shop, nobody logged in — the same gate the cards already apply. */
+const hideForAnonymous = computed<boolean>(() =>
+  isContentHidden(portalMode, authStore.user as never, authStore.isAuthenticated),
+);
 
 /** Add to the quote list, then show it. */
 function handleRequestPrice(): void {

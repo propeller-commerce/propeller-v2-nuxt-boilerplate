@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.0] - 2026-10-14
+
+### Fixed
+
+- **A semi-closed shop still offered "Toevoegen" to an anonymous visitor.** The
+  product page hid the price but kept the quantity field and the button, so a
+  click put the product in the cart (PWP-1051). It now shows a log-in button,
+  as the category cards already did.
+- **The order, quote and quote-request detail pages showed raw payment codes**
+  — "Betaling: BANK_TRANSFER" — because `OrderSummary` was never given
+  `paymethodLabels` (PWP-1028). Jasper reported the order detail; the two quote
+  pages had the same omission.
+- **The login, register and forgot-password pages had no `h1`** (PWP-1054). The
+  heading sits outside `ClientOnly`, so it is in the server HTML.
+- **The mobile menu button had no accessible name** (PWP-1056).
+- The middle-name field is labelled "Middle name" in English (PWP-1053).
+
+### Changed
+
+- Pagination below a listing renders links rather than buttons, at all three
+  call sites, so a page can be opened in a new tab and its URL copied
+  (PWP-1060). The href preserves the current filters, price range, offset and
+  sort.
+- vue-ui `^0.30.0` → `^0.31.0` (core-ui 0.13.0 transitively).
+
 ## [1.19.1] - 2026-10-13
 
 ### Fixed

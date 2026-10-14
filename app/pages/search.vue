@@ -128,6 +128,7 @@
                 v-if="productsResponse"
                 :products="productsResponse as any"
                 :onPageChange="handleGridPaginationPageChange"
+                :pageHref="pageHref"
                 variant="full"
                 :labels="gridPaginationLabels"
               />
@@ -279,11 +280,12 @@ const sortOrder = ref<string>(listing.value.sortOrder);
 const viewMode = ref<'grid' | 'list'>('list');
 
 let suppressQuerySync = false;
-function syncStateToUrl() {
-  markUserInteracted();
+/** The listing query for the current state, with `page` optionally overridden. */
+function buildListingQuery(pageOverride?: number): Record<string, string> {
+  const page = pageOverride ?? currentPage.value;
   const query: Record<string, string> = {};
   if (searchTerm.value) query.q = searchTerm.value;
-  if (currentPage.value > 1) query.page = String(currentPage.value);
+  if (page > 1) query.page = String(page);
   for (const [key, values] of Object.entries(filters.value)) {
     if (values.length > 0) query[key] = JSON.stringify(values);
   }
@@ -292,6 +294,17 @@ function syncStateToUrl() {
   if (offset.value !== 12) query.offset = String(offset.value);
   if (sortField.value !== ProductSortField.RELEVANCE) query.sortField = sortField.value;
   if (sortOrder.value !== SortOrder.DESC) query.sortOrder = sortOrder.value;
+  return query;
+}
+
+/** The href for a page of the current listing, everything else unchanged. */
+function pageHref(page: number): string {
+  return router.resolve({ path: route.path, query: buildListingQuery(page) }).href;
+}
+
+function syncStateToUrl() {
+  markUserInteracted();
+  const query = buildListingQuery();
   if (JSON.stringify(route.query) === JSON.stringify(query)) return;
   suppressQuerySync = true;
   router.push({ path: route.path, query }).finally(() => {

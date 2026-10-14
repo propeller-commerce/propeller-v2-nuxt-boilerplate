@@ -31,6 +31,7 @@
             :showDeliveryInfo="true"
             :showRemarks="true"
             :labels="orderSummaryLabels"
+            :paymethodLabels="paymethodNames"
           />
           <OrderActions
             :order="order as any"
@@ -128,6 +129,7 @@ const pageTitles = useTranslations('PageTitles');
 definePageMeta({ layout: 'account', middleware: 'auth' });
 
 const orderSummaryLabels = useTranslations('OrderSummary');
+const paymethodNames = useTranslations('PaymethodNames');
 const orderActionsLabels = useTranslations('OrderActions');
 const orderShipmentsLabels = useTranslations('OrderShipments');
 const orderItemCardLabels = useTranslations('OrderItemCard');

@@ -17,6 +17,7 @@
           :machineCardLabels="machinesLabels"
           :listing="listing"
           :onListingChange="onListingChange"
+          :pageHref="pageHref"
           :configuration="machineConfiguration"
           :cartId="cartStore.cartId || undefined"
           :onCartCreated="(cart: Cart) => cartStore.setCart(cart)"
@@ -153,13 +154,21 @@ const machineConfiguration = computed(() => ({
   imageVariantFiltersMedium: configuration.imageVariantFiltersMedium,
 }));
 
-function onListingChange(next: MachineListingState): void {
+function listingTarget(next: MachineListingState) {
   const query = buildListingQuery(
     { ...next, sortField: String(next.sortField), sortOrder: String(next.sortOrder) },
     { defaultSortField: MACHINE_SORT_FIELD_DEFAULT, defaultSortOrder: MACHINE_SORT_ORDER_DEFAULT },
   );
-  const path = [basePath.value, ...segments.value].join('/');
-  router.push({ path, query });
+  return { path: [basePath.value, ...segments.value].join('/'), query };
+}
+
+function onListingChange(next: MachineListingState): void {
+  router.push(listingTarget(next));
+}
+
+/** The href for a page of the parts listing, everything else unchanged. */
+function pageHref(page: number): string {
+  return router.resolve(listingTarget({ ...listing.value, page })).href;
 }
 
 function onProductClick(product: Product): void {

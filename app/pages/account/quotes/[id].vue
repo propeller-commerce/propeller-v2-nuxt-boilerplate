@@ -26,6 +26,7 @@
             :order="quote as any"
             :countries="COUNTRIES"
             :labels="{ ...orderSummaryLabels, orderNumber: 'Quote Number', orderDate: 'Quote Date' }"
+            :paymethodLabels="paymethodNames"
             :showReference="true"
             :showNotes="true"
             :showDeliveryAddress="true"
@@ -139,6 +140,7 @@ const languageStore = useLanguageStore();
 const { $graphqlClient } = useNuxtApp();
 
 const orderSummaryLabels = useTranslations('OrderSummary');
+const paymethodNames = useTranslations('PaymethodNames');
 const quoteActionsLabels = useTranslations('QuoteActions');
 const orderItemCardLabels = useTranslations('OrderItemCard');
 const orderBonusItemsLabels = useTranslations('OrderBonusItems');

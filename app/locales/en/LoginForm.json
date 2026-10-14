@@ -8,5 +8,6 @@
   "passwordPlaceholder": "••••••••",
   "noAccount": "Don't have an account?",
   "registerLink": "Create an Account",
-  "registerText": "Don't have an account?"
+  "registerText": "Don't have an account?",
+  "pageTitle": "Welcome back"
 }

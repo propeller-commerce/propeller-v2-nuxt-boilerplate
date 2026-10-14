@@ -1,9 +1,15 @@
 <template>
   <div class="min-h-[70vh] flex items-center justify-center py-12 px-4">
     <div class="w-full max-w-md">
+      <!-- Outside ClientOnly so the heading is in the server HTML. The
+           component's own title would be a second heading, so it is
+           suppressed with an empty `title`. -->
+      <h1 class="text-2xl font-bold text-center mb-6">{{ loginFormLabels.pageTitle }}</h1>
+
       <ClientOnly>
         <LoginForm
           :labels="loginFormLabels"
+          title=""
           :cart="cartStore.cart as Cart | null"
           :afterLogin="handleLoginSuccess"
           :onForgotPasswordClick="() => router.push(localizeHref('/forgot-password', languageStore.language))"

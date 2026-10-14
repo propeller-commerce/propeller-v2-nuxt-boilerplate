@@ -8,5 +8,6 @@
   "password": "Wachtwoord",
   "passwordPlaceholder": "••••••••",
   "registerLink": "Account aanmaken",
-  "registerText": "Nog geen account?"
+  "registerText": "Nog geen account?",
+  "pageTitle": "Welkom terug"
 }
