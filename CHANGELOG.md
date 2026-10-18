@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.1] - 2026-10-18
+
+### Fixed
+
+- **The cluster page offered stock and add-to-cart to an anonymous visitor in a
+  semi-closed shop.** It now shows the log-in button instead, as the product
+  page does (PWP-1051).
+- **The forgot-password page heading was empty.** The page reads
+  `ForgotPassword.title`, which the nl and en dictionaries lacked; they now
+  also carry `submitButton` and `responseMessage`, matching vue (PWP-1054).
+- The log-in button read "Log in to order" on a Dutch shop: the `AddToCart`
+  dictionaries had no `loginToOrder` key (PWP-1051).
+
 ## [1.20.0] - 2026-10-14
 
 ### Fixed

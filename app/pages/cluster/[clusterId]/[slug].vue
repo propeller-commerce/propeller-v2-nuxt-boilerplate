@@ -50,7 +50,7 @@
                 <ProductShortDescription :product="selectedProduct || (cluster as any).defaultProduct" />
               </div>
 
-              <div v-if="(selectedProduct as any)?.inventory" class="my-4">
+              <div v-if="(selectedProduct as any)?.inventory && !hideForAnonymous" class="my-4">
                 <ItemStock
                   :inventory="(selectedProduct as any).inventory"
                   :showAvailability="false"
@@ -83,7 +83,15 @@
               </ClientOnly>
             </template>
 
-            <div class="flex items-center gap-2">
+            <div v-if="hideForAnonymous" class="mt-4">
+              <ClientOnly>
+                <LoginToOrderButton
+                  :labels="addToCartLabels"
+                  :onLoginClick="() => router.push(localizeHref('/login', languageStore.language))"
+                />
+              </ClientOnly>
+            </div>
+            <div v-else class="flex items-center gap-2">
               <ClientOnly>
                 <AddToCart
                   :product="selectedProduct"
@@ -162,6 +170,7 @@ import {
   ClusterJsonLd,
   ClusterOptions,
   ItemStock,
+  LoginToOrderButton,
   ProductBulkPrices,
   ProductGallery,
   ProductPrice,
@@ -176,7 +185,8 @@ import { useCartStore } from '~/stores/cart';
 import { useCompanyStore } from '~/stores/company';
 import { useLanguageStore } from '~/stores/language';
 import { usePriceStore } from '~/stores/price';
-import { configuration, localizeHref } from '~/utils/config';
+import { configuration, localizeHref, portalMode } from '~/utils/config';
+import { isContentHidden } from '@propeller-commerce/propeller-v2-core-ui';
 import { resolveSeoTitle, resolveSeoDescription, resolveCanonicalUrl, buildJsonLdContext } from '~/utils/seo';
 import { useTranslations } from '~/composables/useTranslations';
 import { track } from '~/lib/tracking/bus';
@@ -203,6 +213,11 @@ const cartStore = useCartStore();
 const companyStore = useCompanyStore();
 const languageStore = useLanguageStore();
 const priceStore = usePriceStore();
+
+/** Semi-closed shop, nobody logged in — the same gate the product page applies. */
+const hideForAnonymous = computed<boolean>(() =>
+  isContentHidden(portalMode, authStore.user as never, authStore.isAuthenticated),
+);
 
 const clusterId = computed(() => parseInt(route.params.clusterId as string));
 
