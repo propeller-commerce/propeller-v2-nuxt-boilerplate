@@ -123,6 +123,8 @@ export default defineNuxtConfig({
     trackingDbName: process.env.TRACKING_DB_NAME || '',
     trackingDbSsl: process.env.TRACKING_DB_SSL || '',
     trackingTimezone: process.env.TRACKING_TIMEZONE || 'Europe/Amsterdam',
+    // Basic-auth password for /tracker and /api/tracker*; unset → 404.
+    trackerAccessSecret: process.env.TRACKER_ACCESS_SECRET || '',
     revalidateSecret: process.env.REVALIDATE_SECRET || '',
     // ── Outgoing mail (price requests) ──────────────────────────
     // Server-only. SMTP credentials must never reach the browser.
@@ -137,6 +139,9 @@ export default defineNuxtConfig({
     smtpReplyTo: process.env.SMTP_REPLY_TO || '',
     priceRequestToEmail: process.env.PRICE_REQUEST_TO_EMAIL || '',
     mailAccentColor: process.env.MAIL_ACCENT_COLOR || '',
+    // reCAPTCHA v3 on the price-request form; on only with the public site key too.
+    recaptchaSecretKey: process.env.RECAPTCHA_SECRET_KEY || '',
+    recaptchaMinScore: process.env.RECAPTCHA_MIN_SCORE || '',
     // Env override only — the channel's catalogRootId is the fallback, resolved
     // server-side by resolveBaseCategoryId(). No literal here.
     baseCategoryId: process.env.BASE_CATEGORY_ID || '',
@@ -230,6 +235,7 @@ export default defineNuxtConfig({
       gtmKey: process.env.NUXT_PUBLIC_GTM_KEY || '',
       paymentProvider: process.env.NUXT_PUBLIC_PAYMENT_PROVIDER || '',
       onAccountPayments: process.env.NUXT_PUBLIC_ON_ACCOUNT_PAYMENTS || '',
+      recaptchaSiteKey: process.env.NUXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
     },
   },
 
@@ -259,6 +265,8 @@ export default defineNuxtConfig({
     devStorage: {
       cache: { driver: 'memory' },
     },
+    // graphql 16's extensionless `main` breaks the traced external at runtime; bundle it.
+    externals: { inline: ['graphql'] },
   },
 
   // Vite scans the dynamic `import("#app-manifest")` in

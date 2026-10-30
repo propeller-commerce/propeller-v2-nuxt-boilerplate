@@ -244,6 +244,25 @@ endpoints and the SDK proxy — they **never reach the client bundle**.
 - `NUXT_PUBLIC_FOOTER_DESCRIPTION`, `NUXT_PUBLIC_FOOTER_EMAIL`,
   `NUXT_PUBLIC_FOOTER_PHONE`
 
+## Form protection
+
+`POST /api/price-request` is public, so it is guarded in this order: rate
+limit, honeypot, reCAPTCHA, then validation.
+
+- **Rate limit (always on):** 10 requests per 10 minutes per client IP,
+  in memory per server process. Over the limit answers `429`
+  `{ "error": "rate_limited" }` with a `Retry-After` header (seconds).
+- **Honeypot (always on):** a non-empty `website` field in the body is answered
+  like a success, but no mail is sent.
+- **reCAPTCHA v3 (opt-in):** on only when both `RECAPTCHA_SECRET_KEY`
+  (server-only) and `NUXT_PUBLIC_RECAPTCHA_SITE_KEY` are set; optional
+  `RECAPTCHA_MIN_SCORE` (default `0.5`). The script loads only on the
+  price-request page, and the request must carry a `recaptchaToken` for action
+  `price_request`. A failed check answers `400 { "error": "captcha_failed" }`;
+  if Google cannot be reached it answers `503 { "error": "captcha_unavailable" }`.
+  Create v3 keys at https://www.google.com/recaptcha/admin. reCAPTCHA sets
+  Google cookies, so EU shops need cookie consent before turning it on.
+
 ## Translations
 
 UI strings emitted by `propeller-v2-vue-ui` components flow through
@@ -437,12 +456,28 @@ rewritten to `propeller_` (a dot is illegal in a GA4 event name).
 
 Verify with `npm run test:tracking`.
 
-### `/tracker` is ungated
+### Access to `/tracker`
 
-**Gate it before deploying anywhere shared.** It exposes every account's
-behaviour and revenue to anyone with the URL. It is `noindex` and wrapped in
-`<ClientOnly>`, which is not access control. Deliberately not behind the `auth`
-middleware either — that would let any logged-in *customer* read it.
+The dashboard and every `/api/tracker*` route sit behind HTTP Basic auth,
+enforced in `server/middleware/tracker-access.ts`. Set the password:
+
+```bash
+TRACKER_ACCESS_SECRET=a-long-random-string
+```
+
+Any username works; the password must equal the secret. With the secret unset
+both the page (including `/<locale>/tracker`) and the API answer **404** — the
+dashboard is off until you choose a password. Wrong or missing credentials
+answer **401** with a `WWW-Authenticate` challenge, so the browser prompts.
+
+A script or cron reading the data sends the same credentials:
+
+```bash
+curl -u tracker:"$TRACKER_ACCESS_SECRET" "https://shop.example/api/tracker?metric=health"
+```
+
+Deliberately not behind the `auth` middleware — that would let any logged-in
+*customer* read every account's behaviour and revenue.
 
 ### Changing the schema
 

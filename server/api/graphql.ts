@@ -5,21 +5,16 @@
  * injects the server-only API key, picks the RIGHT key per operation, pipes the
  * body to the upstream endpoint, and streams the response back.
  *
- * Key routing (mirrors propeller-vue's server.js + propeller-next's
- * app/api/graphql/route.ts): the Propeller backend authorizes certain sensitive
- * operations ONLY against the order-editor key — sending them with the general
- * key returns "Forbidden resource". Because the browser SDK runs in proxy mode
- * (no key sent), the proxy is the authoritative router. It selects the key by
- * the GraphQL operation NAME:
- *   - ORDER_EDITOR_MUTATIONS (orderSetStatus, …) → order-editor key. This is
- *     what `useCheckout().placeOrder` issues to set the order UNFINISHED for a
- *     PSP (Mollie) checkout; without this it 403s and the redirect never fires.
- *   - ORDER_EDITOR_QUERIES ({order}) for ANONYMOUS callers → order-editor key,
- *     so the thank-you page can read a just-placed order (the general key 403s
- *     the `order` query).
- *   - ORDER_EDITOR_OPT_IN_MUTATIONS ({contactRegister}) → order-editor key ONLY
- *     when the caller sets `X-Client-ID: order-editor` (the operation name is
- *     shared with public self-registration, so intent is signalled by header).
+ * Key routing: the Propeller backend authorizes certain sensitive operations
+ * ONLY against the order-editor key. The browser SDK runs in proxy mode (no key
+ * sent), so this proxy decides — from the PARSED document, never the
+ * client-supplied operationName (see server/utils/orderEditorRouting.ts):
+ *   - a single allowlisted mutation (orderSetStatus, …) → order-editor key;
+ *   - an anonymous `order` query → order-editor key only for the order id in
+ *     the signed `propeller_last_order` cookie, set here when a cartProcess
+ *     response carries the new order id (the guest thank-you page);
+ *   - `contactRegister` with `X-Client-ID: order-editor` → order-editor key only
+ *     for a caller whose session the upstream accepts.
  *
  * Server-side fetches do NOT go through this proxy — they construct their own
  * GraphQLClient via `server/utils/infra.ts` (same-process call avoids the HTTP
@@ -29,46 +24,31 @@
 
 import { Buffer } from 'node:buffer';
 
+import {
+  classifyOperation,
+  createdOrderId,
+  LAST_ORDER_COOKIE,
+  LAST_ORDER_MAX_AGE,
+  signLastOrder,
+  verifyLastOrder,
+} from '../utils/orderEditorRouting';
+
 const ORDER_EDITOR_CLIENT_ID = 'order-editor';
 
-// Mirrors the SDK's DEFAULT_ORDER_EDITOR_MUTATIONS (GraphQLClient.ts). Keep in
-// sync if the SDK list changes. These operation names route to the order key.
-const ORDER_EDITOR_MUTATIONS = new Set([
-  'orderSetStatus',
-  'passwordResetLink',
-  'triggerQuoteSendRequest',
-  'triggerOrderSendConfirm',
-]);
-
-// Queries the general key isn't allowed to resolve. The `order` query (thank-you
-// page / order-detail screens fetching a single order by id) returns "Forbidden
-// resource" under the general key for anonymous callers; only the order-editor
-// key authorizes it. Authenticated callers carry a Bearer token and resolve it
-// under their own session, so this escalation is anonymous-only.
-const ORDER_EDITOR_QUERIES = new Set(['order']);
-
-// Operations that route to the order key ONLY when the caller identifies as the
-// order-editor client (via `X-Client-ID`). `contactRegister` is used by BOTH
-// public self-registration (general key) AND authorization-settings "add
-// contact" (order key) — same operation name, so intent is signalled by header.
-const ORDER_EDITOR_OPT_IN_MUTATIONS = new Set(['contactRegister']);
-
-/**
- * Extract a GraphQL operation name. Prefer the explicit `operationName` the SDK
- * sends in the body; fall back to the first `query NAME` / `mutation NAME` in
- * the document (mirrors the SDK's `extractOperationName`), stripping leading
- * `#` comment lines first. Returns undefined for anonymous operations.
- */
-function extractOperationName(parsed: { operationName?: unknown; query?: unknown }): string | undefined {
-  if (typeof parsed.operationName === 'string' && parsed.operationName) {
-    return parsed.operationName;
+// True when the upstream resolves a viewer for this Authorization header.
+async function hasValidSession(upstream: string, apiKey: string, auth: string): Promise<boolean> {
+  try {
+    const res = await fetch(upstream, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: apiKey, Authorization: auth },
+      body: JSON.stringify({ query: '{ viewer { __typename } }' }),
+    });
+    if (!res.ok) return false;
+    const json = (await res.json()) as { data?: { viewer?: unknown }; errors?: unknown[] };
+    return !!json?.data?.viewer && !json.errors?.length;
+  } catch {
+    return false;
   }
-  if (typeof parsed.query === 'string') {
-    const stripped = parsed.query.replace(/^\s*(#[^\n]*\n)+/g, '').trimStart();
-    const match = stripped.match(/^(?:query|mutation)\s+(\w+)/);
-    if (match) return match[1];
-  }
-  return undefined;
 }
 
 export default defineEventHandler(async (event) => {
@@ -86,15 +66,13 @@ export default defineEventHandler(async (event) => {
     return { error: 'missing body' };
   }
 
-  // Parse the operation name to route the key. Tolerate parse failures — a
-  // malformed body just falls through to the general key (upstream rejects it).
-  let parsed: { operationName?: unknown; query?: unknown } = {};
+  // A malformed body falls through to the general key (upstream rejects it).
+  let parsed: unknown = null;
   try {
     parsed = JSON.parse(typeof body === 'string' ? body : Buffer.from(body).toString('utf-8'));
   } catch {
-    /* leave parsed = {} → general key */
+    /* general key */
   }
-  const operationName = extractOperationName(parsed);
 
   // Resolve the caller's session. The browser SDK runs in proxy mode and does
   // NOT attach a Bearer header on reloads (the in-memory token from login is
@@ -106,18 +84,22 @@ export default defineEventHandler(async (event) => {
   const cookieToken = getCookie(event, 'access_token');
   const auth = getHeader(event, 'authorization') ?? (cookieToken ? `Bearer ${cookieToken}` : undefined);
   const isAnonymous = !auth;
-  const clientId = getHeader(event, 'x-client-id') ?? '';
-  const orderEditorOptIn = clientId === ORDER_EDITOR_CLIENT_ID;
+  const orderEditorOptIn = getHeader(event, 'x-client-id') === ORDER_EDITOR_CLIENT_ID;
+  const orderKey = config.boilerplateOrderEditorApiKey;
 
-  // Decide which key authorizes this operation.
+  const choice = orderKey
+    ? classifyOperation({
+        body: parsed,
+        isAnonymous,
+        orderEditorOptIn,
+        lastOrderId: verifyLastOrder(getCookie(event, LAST_ORDER_COOKIE), orderKey),
+      })
+    : 'general';
   const useOrderKey =
-    !!config.boilerplateOrderEditorApiKey &&
-    !!operationName &&
-    (ORDER_EDITOR_MUTATIONS.has(operationName) ||
-      (isAnonymous && ORDER_EDITOR_QUERIES.has(operationName)) ||
-      (orderEditorOptIn && ORDER_EDITOR_OPT_IN_MUTATIONS.has(operationName)));
+    choice === 'order-editor' ||
+    (choice === 'order-editor-session' && !!auth && (await hasValidSession(upstream, config.boilerplateApiKey, auth)));
 
-  const apiKey = useOrderKey ? config.boilerplateOrderEditorApiKey : config.boilerplateApiKey;
+  const apiKey = useOrderKey ? orderKey : config.boilerplateApiKey;
 
   if (!apiKey) {
     setResponseStatus(event, 503);
@@ -139,10 +121,22 @@ export default defineEventHandler(async (event) => {
     const upstreamResponse = await fetch(upstream, {
       method: 'POST',
       headers: forwardedHeaders,
-      body: typeof body === 'string' ? body : Buffer.from(body),
+      // Elevated requests forward exactly what was classified.
+      body: useOrderKey ? JSON.stringify(parsed) : typeof body === 'string' ? body : Buffer.from(body),
     });
 
     const text = await upstreamResponse.text();
+
+    const newOrderId = orderKey && upstreamResponse.ok ? createdOrderId(parsed, text) : null;
+    if (newOrderId) {
+      setCookie(event, LAST_ORDER_COOKIE, signLastOrder(newOrderId, orderKey), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production' || getRequestProtocol(event) === 'https',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: LAST_ORDER_MAX_AGE,
+      });
+    }
 
     setResponseStatus(event, upstreamResponse.status);
     setResponseHeader(event, 'content-type', upstreamResponse.headers.get('content-type') ?? 'application/json');

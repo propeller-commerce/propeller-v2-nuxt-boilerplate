@@ -41,10 +41,11 @@
  * Mirrors propeller-vue's PriceRequestView and propeller-next's /price-request.
  */
 import { ref } from 'vue';
-import { PriceRequestList, usePriceRequest } from '@propeller-commerce/propeller-v2-vue-ui';
+import { PriceRequestList, usePriceRequest, type PriceRequestSubmitExtras } from '@propeller-commerce/propeller-v2-vue-ui';
 import { useAuthStore } from '~/stores/auth';
 import { useLanguageStore } from '~/stores/language';
 import { useTranslations } from '~/composables/useTranslations';
+import { useRecaptcha } from '~/composables/useRecaptcha';
 
 const pageTitles = useTranslations('PageTitles');
 useHead({ title: () => pageTitles.value.priceRequest });
@@ -54,9 +55,11 @@ definePageMeta({ middleware: 'auth' });
 const t = useTranslations('PriceRequest');
 const authStore = useAuthStore();
 const languageStore = useLanguageStore();
+const { getRecaptchaToken } = useRecaptcha();
+const sendErrorCode = ref('');
 
 const priceRequest = usePriceRequest({
-  onSubmit: async (items, comment) => {
+  onSubmit: async (items, comment, extras?: PriceRequestSubmitExtras) => {
     const user = authStore.user as {
       email?: string;
       firstName?: string;
@@ -64,6 +67,7 @@ const priceRequest = usePriceRequest({
       companyName?: string;
       phone?: string;
     } | null;
+    const recaptchaToken = await getRecaptchaToken('price_request').catch(() => undefined);
     const res = await fetch('/api/price-request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -75,10 +79,13 @@ const priceRequest = usePriceRequest({
         name: [user?.firstName, user?.lastName].filter(Boolean).join(' '),
         company: user?.companyName ?? '',
         phone: user?.phone ?? '',
+        recaptchaToken,
+        website: extras?.website ?? '',
       }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
+      sendErrorCode.value = res.status === 429 ? 'rate_limited' : String(body?.error || '');
       throw new Error(body?.error || 'failed');
     }
   },
@@ -86,10 +93,18 @@ const priceRequest = usePriceRequest({
 
 const sendError = ref('');
 
-async function handleSubmit(comment: string): Promise<boolean> {
+async function handleSubmit(comment: string, extras?: PriceRequestSubmitExtras): Promise<boolean> {
   sendError.value = '';
-  const ok = await priceRequest.submit(comment);
-  if (!ok) sendError.value = t.value.sendFailed || 'Could not send the request';
+  sendErrorCode.value = '';
+  const ok = await priceRequest.submit(comment, extras);
+  if (ok) return ok;
+  if (sendErrorCode.value === 'rate_limited') {
+    sendError.value = t.value.rateLimited || 'Too many requests. Please wait a few minutes and try again.';
+  } else if (sendErrorCode.value === 'captcha_failed') {
+    sendError.value = t.value.captchaFailed || 'We could not verify your request. Please reload the page and try again.';
+  } else {
+    sendError.value = t.value.sendFailed || 'Could not send the request';
+  }
   return ok;
 }
 </script>

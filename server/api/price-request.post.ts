@@ -7,6 +7,9 @@ import {
   sectionHeading,
 } from '../utils/mail/template';
 import { getTranslations, labeller } from '../utils/mail/locales';
+import { guardFormRequest } from '../utils/formGuard';
+import { formRateLimiter, PRICE_REQUEST_RATE_LIMIT } from '../utils/rateLimit';
+import { getRecaptchaSettings } from '../utils/recaptcha';
 
 /**
  * POST /api/price-request — price-request submission. Same contract and
@@ -37,6 +40,8 @@ interface Payload {
   phone?: string;
   /** The shopper's active language, for their confirmation copy. */
   language?: string;
+  website?: string;
+  recaptchaToken?: string;
 }
 
 /** Cap on products per request — a bound on a public endpoint. */
@@ -62,13 +67,36 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event);
   const shopLanguage = (config.boilerplateDefaultLanguage as string) || 'NL';
 
-  let body: Payload;
+  let body: Payload | null;
   try {
     body = (await readBody(event)) as Payload;
   } catch {
-    setResponseStatus(event, 400);
-    return { error: 'Invalid JSON' };
+    body = null;
   }
+
+  const guard = await guardFormRequest({
+    route: '/api/price-request',
+    ip: getRequestIP(event, { xForwardedFor: true }) || 'unknown',
+    body,
+    rule: PRICE_REQUEST_RATE_LIMIT,
+    limiter: formRateLimiter,
+    recaptcha: getRecaptchaSettings({
+      secret: config.recaptchaSecretKey || process.env.RECAPTCHA_SECRET_KEY,
+      siteKey: config.public?.recaptchaSiteKey,
+      minScore: config.recaptchaMinScore || process.env.RECAPTCHA_MIN_SCORE,
+    }),
+    action: 'price_request',
+  });
+  if (guard.action === 'reject') {
+    if (guard.status === 429) setResponseHeader(event, 'Retry-After', String(guard.retryAfter));
+    setResponseStatus(event, guard.status);
+    return { error: guard.error };
+  }
+  if (guard.action === 'drop') {
+    console.info('[api/price-request] honeypot filled, request dropped');
+    return { ok: true };
+  }
+
   if (!body || typeof body !== 'object') {
     setResponseStatus(event, 400);
     return { error: 'Invalid JSON' };

@@ -8,7 +8,15 @@
 <template>
   <ClientOnly>
     <div class="viz-root min-h-screen">
-    <div class="flex flex-col lg:flex-row">
+    <div v-if="access !== 'ok'" class="p-6 text-sm" role="status" :style="{ color: 'var(--text-secondary)' }">
+      <template v-if="access === 'checking'">Checking access…</template>
+      <template v-else-if="access === 'denied'">
+        The tracker needs a password. <a :href="route.fullPath" class="underline">Reload to sign in.</a>
+      </template>
+      <template v-else-if="access === 'unavailable'">The tracker is not enabled on this shop.</template>
+      <template v-else>The tracker could not be reached. Try again later.</template>
+    </div>
+    <div v-else class="flex flex-col lg:flex-row">
       <aside
         class="lg:w-60 lg:min-h-screen border-b lg:border-b-0 lg:border-r p-4 shrink-0"
         :style="{ borderColor: 'var(--border-1)', background: 'var(--surface-2)' }"
@@ -114,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import TrackerSections from '~/components/tracker/TrackerSections.vue'
 import TrackerSetupBanner from '~/components/tracker/TrackerSetupBanner.vue'
 import { POLL_MS } from '~/composables/useMetric'
@@ -122,9 +130,7 @@ import { POLL_MS } from '~/composables/useMetric'
 /**
  * /tracker — sidebar, date range, section switch.
  *
- * ponytail: ungated by request — GATE BEFORE DEPLOY. This page exposes every
- * account's behaviour and revenue to anyone with the URL, which is fine on a
- * local box and is not fine anywhere shared.
+ * Gated server-side by HTTP Basic auth (server/middleware/tracker-access.ts).
  *
  * The range picker is a pair of native `<input type="date">` — no picker
  * library for something the platform already ships.
@@ -169,6 +175,18 @@ const today = localISO()
 const from = ref(localISO(6))
 const to = ref(today)
 const section = ref<string>(String(route.query.section ?? 'overview'))
+
+// A client-side navigation skips the server gate, so probe the API before mounting any panel.
+const access = ref<'checking' | 'ok' | 'denied' | 'unavailable' | 'error'>('checking')
+
+onMounted(async () => {
+  try {
+    const res = await fetch('/api/tracker?metric=health', { cache: 'no-store' })
+    access.value = res.status === 401 ? 'denied' : res.status === 404 ? 'unavailable' : 'ok'
+  } catch {
+    access.value = 'error'
+  }
+})
 
 function select(id: string) {
   section.value = id

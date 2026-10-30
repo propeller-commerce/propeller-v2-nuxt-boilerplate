@@ -1,6 +1,6 @@
 {
   "name": "propeller-nuxt",
-  "version": "1.20.1",
+  "version": "1.21.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "lint:fix": "eslint --fix",
     "clean": "node -e \"const{rmSync}=require('fs');for(const d of ['.nuxt','.output','dist'])rmSync(d,{recursive:true,force:true})\"",
     "test:tracking": "node --test --experimental-strip-types app/lib/tracking/*.test.ts",
+    "test:server": "node --test --experimental-strip-types tests/server/*.test.ts",
     "tracking:init": "node --experimental-strip-types scripts/tracking-init.ts"
   },
   "dependencies": {
@@ -26,10 +27,11 @@
     "@propeller-commerce/propeller-v2-mollie": "^0.2.4",
     "@propeller-commerce/propeller-v2-msp": "^0.1.2",
     "@propeller-commerce/propeller-v2-punchout": "^0.1.0",
-    "@propeller-commerce/propeller-v2-vue-ui": "^0.31.1",
+    "@propeller-commerce/propeller-v2-vue-ui": "^0.32.0",
     "@vueuse/core": "^14.2.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "graphql": "^16.14.2",
     "lodash.debounce": "^4.0.8",
     "lucide-vue-next": "^0.469.0",
     "marked": "^18.0.0",

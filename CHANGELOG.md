@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.0] - 2026-10-30
+
+### Security
+
+- **`/tracker` and its data API were open to anyone with the URL** (PWP-1077).
+  The page (every locale prefix and sub-path) and every `/api/tracker*` route
+  now sit behind HTTP Basic auth: any username, the password set in the new
+  server-only `TRACKER_ACCESS_SECRET`. With the secret unset both answer 404;
+  wrong or missing credentials answer 401 with a `WWW-Authenticate` challenge.
+  After a client-side navigation the page shows an access message instead of
+  empty panels. A script reading the data sends the same credentials.
+- **`/api/graphql` chose the order-editor key from the client-supplied
+  operation name** (PWP-1078), so any query could be sent under an allowlisted
+  name. The proxy now parses the document and elevates only a single-operation
+  document whose one top-level field is an allowlisted mutation. The anonymous
+  `order` query (the guest thank-you page) is elevated only for the order id in
+  a signed, httpOnly `propeller_last_order` cookie, set for an hour when the
+  proxy relays the `cartProcess` response that created the order.
+  `contactRegister` with `X-Client-ID: order-editor` now also needs a session
+  the backend accepts.
+- **`/api/price-request` had no abuse protection.** It is now rate limited to
+  10 requests per 10 minutes per IP (`429 { error: 'rate_limited' }` with
+  `Retry-After`), and a non-empty `website` honeypot field is answered like a
+  success without sending mail.
+- **Optional reCAPTCHA v3 on the price-request form.** Set both
+  `RECAPTCHA_SECRET_KEY` and `NUXT_PUBLIC_RECAPTCHA_SITE_KEY` (optional
+  `RECAPTCHA_MIN_SCORE`, default `0.5`) to require a token for action
+  `price_request`. A failed check answers `400 { error: 'captcha_failed' }`;
+  Google unreachable answers `503 { error: 'captcha_unavailable' }`. The script
+  loads only on the price-request page. New `rateLimited` and `captchaFailed`
+  labels in the `PriceRequest` namespace.
+
+### Added
+
+- `graphql` as a direct dependency, and `npm run test:server` for the new
+  server unit tests.
+- The price-request page forwards the `website` honeypot from `PriceRequestList`
+  (vue-ui 0.32.0) in its POST body, sending an empty string when the installed
+  package does not supply it yet.
+
+### Changed
+
+- Pins vue-ui 0.32.0 (MachineGrid skeletons and props, the search error state,
+  the price-request honeypot).
+
 ## [1.20.1] - 2026-10-18
 
 ### Fixed
