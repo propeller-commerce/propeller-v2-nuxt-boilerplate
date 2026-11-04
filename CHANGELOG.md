@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.2] - 2026-11-04
+
+### Changed
+
+- **Pin `propeller-v2-vue-ui` 0.33.0.** `RegisterForm` can now register
+  without a password (`:show-password="false"`, which also skips the automatic
+  login) and without the welcome email (`:send-welcome-email="false"`), for
+  shops that approve each account in the backoffice and send a set-password
+  link. The register page keeps today's behaviour; both props default to `true`.
+
 ## [1.21.1] - 2026-11-04
 
 ### Changed
