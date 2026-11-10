@@ -43,6 +43,13 @@ import {
 import { cachedSdkFetch, stableStringify } from './cache';
 import { ANONYMOUS_CACHE_TTL_SECONDS, TAG_CATALOG, tagFor } from './tags';
 import type { ServerInfra } from './infra';
+import { isContentHidden } from '@propeller-commerce/propeller-v2-core-ui';
+import { hidePrices } from './hidePrices';
+
+// Semi-closed shops must not send prices to visitors who are not logged in.
+function forViewer<T>(infra: ServerInfra, data: T): T {
+  return isContentHidden(infra.portalMode, infra.user) ? hidePrices(data) : data;
+}
 
 // We type the fetched shapes loosely (the SDK + Vue UI package use slightly
 // divergent type names for the same data, depending on entry). Treat as
@@ -302,7 +309,7 @@ export async function fetchProduct(
               }
             : {}),
         });
-        return result ? (toPlain(result) as FetchedProduct) : null;
+        return result ? forViewer(infra, toPlain(result) as FetchedProduct) : null;
       } catch (e) {
         if (e instanceof Error && /not found|null for non-nullable/i.test(e.message)) {
           return null;
@@ -373,7 +380,7 @@ export async function fetchCategory(
         if (retyped) {
           result = await run({ ...categoryProductSearchInput, textFilters: retyped });
         }
-        return result ? (toPlain(result) as FetchedCategory) : null;
+        return result ? forViewer(infra, toPlain(result) as FetchedCategory) : null;
       } catch (e) {
         if (e instanceof Error && /not found|null for non-nullable/i.test(e.message)) {
           return null;
@@ -447,7 +454,7 @@ export async function fetchSearch(
           result = await run({ ...categoryProductSearchInput, textFilters: retyped });
         }
         const products = (result as { products?: ProductsResponse } | null)?.products;
-        return products ? (toPlain(products) as ProductsResponse) : null;
+        return products ? forViewer(infra, toPlain(products) as ProductsResponse) : null;
       } catch (e) {
         if (e instanceof Error && /not found|null for non-nullable/i.test(e.message)) {
           return null;
@@ -503,7 +510,7 @@ export async function fetchCluster(
               }
             : {}),
         });
-        return result ? (toPlain(result) as Cluster) : null;
+        return result ? forViewer(infra, toPlain(result) as Cluster) : null;
       } catch (e) {
         if (e instanceof Error && /not found|null for non-nullable/i.test(e.message)) {
           return null;
