@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.4] - 2026-11-12
+
+### Fixed
+
+- **VAT lines show the exact rate (PWP-1065).** Pin `propeller-sdk-v2`
+  0.19.0 and `propeller-v2-vue-ui` 0.33.1. The API's VAT rate was a rounded
+  whole number, so the cart, checkout, order and authorization-request
+  totals showed the Swiss 8.1% as "8%", and dropped the VAT line of a rate
+  under 1%. They now show the exact rate in the shop's number format
+  ("8,1%" in Dutch). Whole rates such as 21% and 9% look the same as before.
+- **Authorization-request prices follow the shop language.** The request
+  detail on the authorization-requests page always formatted amounts in
+  Dutch with "€"; it now uses the storefront language and currency, like
+  the cart.
+
 ## [1.21.3] - 2026-11-10
 
 ### Security
