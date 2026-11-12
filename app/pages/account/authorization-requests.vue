@@ -5,7 +5,7 @@
     </div>
     <ClientOnly>
       <PurchaseAuthorizationRequests
-        v-if="authStore.user && isContact(authStore.user) && companyStore.companyId"
+        v-if="authStore.user && isContact(authStore.user) && companyStore.companyId && authStore.isAuthManagerForCompany(authStore.user, companyStore.companyId)"
         :afterAcceptRequest="handleAfterAccept"
         :afterDeleteRequest="handleAfterReject"
         :labels="purchaseAuthorizationRequestsLabels"

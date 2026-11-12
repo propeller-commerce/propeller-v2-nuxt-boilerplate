@@ -11,6 +11,7 @@
  */
 
 import { getListingInfra } from '../../utils/infra';
+import { parseTextFiltersParam } from '../../utils/textFilters';
 import { fetchCategory } from '../../utils/fetchers';
 
 export default defineEventHandler(async (event) => {
@@ -28,20 +29,7 @@ export default defineEventHandler(async (event) => {
     selectedCompanyId: Number.isFinite(companyIdParam) ? companyIdParam : undefined,
   });
 
-  let textFilters: Array<{ attributeName: string; attributeValues: string[] }> | undefined;
-  if (typeof q.filters === 'string' && q.filters) {
-    try {
-      const parsed = JSON.parse(q.filters);
-      if (parsed && typeof parsed === 'object') {
-        textFilters = Object.entries(parsed as Record<string, string[]>).map(([attributeName, attributeValues]) => ({
-          attributeName,
-          attributeValues,
-        }));
-      }
-    } catch {
-      // ignore malformed JSON
-    }
-  }
+  const textFilters = parseTextFiltersParam(q.filters);
 
   return fetchCategory(infra, id, {
     page: q.page ? Number(q.page) : undefined,

@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.8] - 2026-11-12
+
+### Fixed
+
+- **`/search/<term>` searches for the term.** `pages/search.vue` sat next to
+  `pages/search/`, so it became the parent route and, with no `<NuxtPage/>`,
+  never rendered the child that redirects to `/search?q=`. It is now
+  `pages/search/index.vue`.
+- **Attribute filters work.** The category and search routes sent
+  `{ attributeName, attributeValues }`; the API wants
+  `{ name, values, exclude, type }` and answered 400, so a filtered listing
+  was a 500. Both routes share `parseTextFiltersParam`
+  (`server/utils/textFilters.ts`).
+- **`<html lang>` is set**, and follows the active language.
+- **The product URL carries the product's slug.** A stale or typed slug
+  answers 301 to the product's slug in the active language, and a language
+  switch swaps the slug in place. The page key leaves the slug out, so the
+  swap does not refetch.
+- **Authorization settings and requests are manager-only.** A contact without
+  the authorization-manager role who typed the URL got the manager component;
+  the pages now render nothing for them, as the menu already hid the links.
+- **English breadcrumbs link to a working page** (SDK `^0.19.1`, every
+  language's category slug) and **forgot password no longer reveals which
+  addresses have an account** (vue-ui `^0.33.4`).
+
 ## [1.21.7] - 2026-11-12
 
 ### Fixed

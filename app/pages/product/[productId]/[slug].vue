@@ -285,6 +285,27 @@ watch([product, status], ([p, s]) => {
   showError({ statusCode: 404, statusMessage: 'Product not found' });
 });
 
+// The URL carries the product's own slug in the active language (else its
+// first), as Next's PDP does. A stale or typed slug answers 301 on the server;
+// after a language switch the client swaps in that language's slug. The page
+// key leaves the slug out, so the swap doesn't remount the page or refetch.
+definePageMeta({ key: (r) => `product:${r.params.productId}` });
+const productPath = computed(() => {
+  const p = product.value as Product | null | undefined;
+  if (!p) return null;
+  const path = configuration.urls.getProductUrl(p, languageStore.language);
+  return path.includes(`/product/${productId.value}/`) ? path : null;
+});
+const onProductPath = () => !productPath.value || decodeURI(route.path) === decodeURI(productPath.value);
+if (import.meta.server && !onProductPath()) {
+  await navigateTo({ path: productPath.value!, query: route.query }, { redirectCode: 301 });
+}
+watch(productPath, () => {
+  if (import.meta.client && !onProductPath()) {
+    void router.replace({ path: productPath.value!, query: route.query, hash: route.hash });
+  }
+}, { immediate: true });
+
 const images = computed(
   () =>
     (product.value as any)?.media?.images?.items

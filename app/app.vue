@@ -57,6 +57,8 @@ watch(
 // no title of its own renders the site name once rather than "Name | Name".
 const siteName = config.public.siteName as string;
 useHead({
+  // <html lang> follows the active language, in SSR and after a switch.
+  htmlAttrs: { lang: computed(() => language.language.toLowerCase()) },
   title: siteName,
   titleTemplate: (title?: string) =>
     title && title !== siteName ? `${title} | ${siteName}` : siteName,
