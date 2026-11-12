@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.5] - 2026-11-12
+
+### Fixed
+
+- **The order subtotal no longer includes the shipping costs** (PWP-1070).
+  Pins `@propeller-commerce/propeller-v2-vue-ui` `^0.33.2`, whose `OrderTotals` takes the shipping and
+  transaction costs out of the subtotal and adds the order discount back.
+
 ## [1.21.4] - 2026-11-12
 
 ### Fixed
