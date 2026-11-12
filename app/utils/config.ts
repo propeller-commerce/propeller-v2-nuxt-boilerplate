@@ -59,10 +59,13 @@ declare const __CURRENCY_CODE__: string | undefined;
 export const DEFAULT_LANGUAGE = (
   typeof __DEFAULT_LANGUAGE__ === 'string' ? __DEFAULT_LANGUAGE__ : 'NL'
 ).toUpperCase();
+// Never put a property access straight on an inlined global: nitro.replace
+// (@rollup/plugin-replace) skips `__X__.length`, so the server bundle kept it
+// unreplaced behind an always-true guard and threw a ReferenceError.
+const INLINED_LANGUAGES: string[] | undefined =
+  typeof __SUPPORTED_LANGUAGES__ !== 'undefined' ? __SUPPORTED_LANGUAGES__ : undefined;
 export const SUPPORTED_LANGUAGES: string[] =
-  typeof __SUPPORTED_LANGUAGES__ !== 'undefined' && __SUPPORTED_LANGUAGES__.length > 0
-    ? __SUPPORTED_LANGUAGES__
-    : ['NL', 'EN'];
+  INLINED_LANGUAGES && INLINED_LANGUAGES.length > 0 ? INLINED_LANGUAGES : ['NL', 'EN'];
 export type SupportedLanguage = string;
 
 /** Languages that get a URL prefix (everything except the default). */

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.7] - 2026-11-12
+
+### Fixed
+
+- **Server catalogue routes no longer answer 500** (PWP-971). 1.21.6 inlined
+  the build-time settings into the Nitro bundle with `nitro.replace`, which
+  leaves an identifier followed by `.` untouched. `app/utils/config.ts` read
+  `__SUPPORTED_LANGUAGES__.length` behind a `typeof` guard that the
+  replacement turned always-true, so every `/api/catalog` route threw
+  `ReferenceError: __SUPPORTED_LANGUAGES__ is not defined`. The list is now
+  read into a local first.
+
+### Changed
+
+- **CI boots the built server** and fails on a `ReferenceError` from any
+  catalogue route, and the bundle check now covers all ten build-time
+  settings, not four.
+
 ## [1.21.6] - 2026-11-12
 
 ### Fixed
