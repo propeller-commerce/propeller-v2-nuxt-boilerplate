@@ -51,6 +51,20 @@ const URL_PATTERN = process.env.NUXT_PUBLIC_URL_PATTERN || 'page/id/slug';
 const CURRENCY = process.env.NUXT_PUBLIC_CURRENCY || '€';
 const CURRENCY_CODE = process.env.NUXT_PUBLIC_CURRENCY_CODE || 'EUR';
 
+/** Build-time globals, inlined into the browser, SSR and Nitro bundles alike. */
+const INLINED = {
+  __DEFAULT_LANGUAGE__: JSON.stringify(DEFAULT_LANGUAGE),
+  __SUPPORTED_LANGUAGES__: JSON.stringify(SUPPORTED_LANGUAGES),
+  __BASE_CATEGORY_ID__: JSON.stringify(BASE_CATEGORY_ID ?? null),
+  __MENU_DEPTH__: JSON.stringify(MENU_DEPTH),
+  __CHANNEL_ID__: JSON.stringify(CHANNEL_ID),
+  __PORTAL_MODE__: JSON.stringify(PORTAL_MODE),
+  __SITE_URL__: JSON.stringify(SITE_URL),
+  __URL_PATTERN__: JSON.stringify(URL_PATTERN),
+  __CURRENCY__: JSON.stringify(CURRENCY),
+  __CURRENCY_CODE__: JSON.stringify(CURRENCY_CODE),
+};
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-01',
@@ -267,6 +281,10 @@ export default defineNuxtConfig({
     },
     // graphql 16's extensionless `main` breaks the traced external at runtime; bundle it.
     externals: { inline: ['graphql'] },
+    // `vite.define` never reaches the Nitro bundle, so server/ code importing
+    // app/utils/config.ts fell back to channel 1 and every anonymous listing
+    // on another channel failed. Same values, inlined into the server too.
+    replace: INLINED,
   },
 
   // Vite scans the dynamic `import("#app-manifest")` in
@@ -277,18 +295,7 @@ export default defineNuxtConfig({
   vite: {
     // Inlined so the pure helpers in app/utils/config.ts see the same values in
     // the server and browser bundles — see the note above the constants.
-    define: {
-      __DEFAULT_LANGUAGE__: JSON.stringify(DEFAULT_LANGUAGE),
-      __SUPPORTED_LANGUAGES__: JSON.stringify(SUPPORTED_LANGUAGES),
-      __BASE_CATEGORY_ID__: JSON.stringify(BASE_CATEGORY_ID ?? null),
-      __MENU_DEPTH__: JSON.stringify(MENU_DEPTH),
-      __CHANNEL_ID__: JSON.stringify(CHANNEL_ID),
-      __PORTAL_MODE__: JSON.stringify(PORTAL_MODE),
-      __SITE_URL__: JSON.stringify(SITE_URL),
-      __URL_PATTERN__: JSON.stringify(URL_PATTERN),
-      __CURRENCY__: JSON.stringify(CURRENCY),
-      __CURRENCY_CODE__: JSON.stringify(CURRENCY_CODE),
-    },
+    define: INLINED,
     resolve: {
       alias: {
         '#app-manifest': new URL('./app/stubs/app-manifest.mjs', import.meta.url).pathname,

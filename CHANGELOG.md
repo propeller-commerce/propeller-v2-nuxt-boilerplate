@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.6] - 2026-11-12
+
+### Fixed
+
+- **Server-side catalogue requests use the configured channel** (PWP-971).
+  `nuxt.config.ts` inlined `__CHANNEL_ID__`, `__BASE_CATEGORY_ID__`,
+  `__PORTAL_MODE__` and the other build-time settings through `vite.define`
+  only, which never reaches the Nitro server bundle. Every `server/` route
+  therefore ran on channel 1, and on a tenant without channel 1 every
+  anonymous listing failed. The same values now go to `nitro.replace` too.
+- **Password reset, registration, the specifications tab, English
+  breadcrumbs and the cart's quote button now work** (PWP-971). Pins
+  `@propeller-commerce/propeller-v2-vue-ui` `^0.33.3`, whose `ForgotPassword`,
+  `RegisterForm`, `ProductTabs`, `Breadcrumbs` and `CartSummary` take the
+  GraphQL client, language, configuration and user from the provider when a
+  page leaves the prop out, as this app does.
+
+### Changed
+
+- **CI installs, lints, tests and builds the app before the public mirror**
+  (PWP-971). Nothing built it before, so a tree that no longer built could
+  still reach the mirror every scaffold is made from. The build also fails
+  if a build-time setting leaks into the server bundle unreplaced.
+
 ## [1.21.5] - 2026-11-12
 
 ### Fixed
