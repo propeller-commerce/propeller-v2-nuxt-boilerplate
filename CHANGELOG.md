@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.9] - 2026-11-19
+
+### Fixed
+
+- **Product and other responsive grids keep their columns** (PWP-976). Pins
+  `@propeller-commerce/propeller-v2-vue-ui` `^0.33.5`, whose stylesheet
+  restates the grid breakpoints so a Tailwind sheet loaded after it can't
+  flatten them.
+
 ## [1.21.8] - 2026-11-12
 
 ### Fixed
