@@ -32,6 +32,7 @@ import { configuration, localizeHref } from '~/utils/config';
 import { useLanguageStore } from '~/stores/language';
 import { useAfterLogin } from '~/composables/useAfterLogin';
 import { track } from '~/lib/tracking/bus';
+import { localPath } from '~/lib/localPath';
 
 const router = useRouter();
 const route = useRoute();
@@ -43,7 +44,9 @@ const failed = ref(false);
 
 onMounted(async () => {
   const token = (route.query.mtoken as string) || '';
-  const redirect = (route.query.redirect as string) || '';
+  // Same-site paths only (#14): `?redirect=https://…` must not send a fresh
+  // session off-site.
+  const redirect = localPath(route.query.redirect) || '';
   const expired = () => router.replace(`${localizeHref('/login', languageStore.language)}?magic_expired=1`);
 
   if (!token) {
@@ -54,8 +57,9 @@ onMounted(async () => {
 
   // Clear any stale session so the exchange is anonymous (matches the WP flow)
   // and a magic link can hand off to a DIFFERENT contact: drop the httpOnly
-  // SSR cookie AND the in-memory SDK client token.
-  await $fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
+  // SSR cookie AND the in-memory SDK client token. `keep` spares the pending
+  // punchout entry this very exchange activates.
+  await $fetch('/api/auth/session', { method: 'DELETE', query: { keep: 'punchout-pending' } }).catch(() => {});
   ($graphqlClient as any).clearAccessToken?.();
 
   const res = await magicLogin(token);

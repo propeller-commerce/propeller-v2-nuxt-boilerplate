@@ -36,12 +36,12 @@ import { GraphQLClient } from '@propeller-commerce/propeller-sdk-v2';
  * mutations, but our backend requires the order-editor key for them too —
  * otherwise `paymentCreate`/`paymentUpdate` 403 with "Forbidden resource".
  * `orderEditorMutations` REPLACES the default list, so we include the defaults
- * plus the payment mutations.
+ * (minus passwordResetLink, which this flow never sends and which must never run
+ * with this key: it returns the reset link) plus the payment mutations.
  */
 const MSP_ORDER_EDITOR_MUTATIONS = [
-  // SDK defaults (must be repeated — this option replaces, not extends):
+  // SDK defaults (must be repeated — this option replaces, not extends), without passwordResetLink:
   'orderSetStatus',
-  'passwordResetLink',
   'triggerQuoteSendRequest',
   'triggerOrderSendConfirm',
   // Payment mutations the MultiSafepay flow issues, gated the same way:
@@ -118,7 +118,8 @@ export function getMspProvider(event: H3Event): MspProvider {
   const config = useRuntimeConfig(event);
   const liveApiKey = config.mspLiveKey || '';
   const testApiKey = config.mspTestKey || '';
-  const testMode = (config.mspTestMode || 'true').trim().toLowerCase() === 'true';
+  // String(): a runtime NUXT_MSP_TEST_MODE=false arrives as a boolean (`false || 'true'` was test mode).
+  const testMode = String(config.mspTestMode ?? 'true').trim().toLowerCase() === 'true';
   const locale = (config.mspLocale || '').trim();
 
   _provider = new MspProvider(

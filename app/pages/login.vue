@@ -38,6 +38,7 @@ import { useLanguageStore } from '~/stores/language';
 import { localizeHref } from '~/utils/config';
 import { useTranslations } from '~/composables/useTranslations';
 import { useAfterLogin } from '~/composables/useAfterLogin';
+import { localPath } from '~/lib/localPath';
 
 const pageTitles = useTranslations('PageTitles');
 useHead({ title: () => pageTitles.value.login });
@@ -59,7 +60,8 @@ async function handleLoginSuccess(
   anonymousCart?: Cart | null
 ) {
   const { effectiveLanguage } = await runAfterLogin(user, accessToken, refreshToken, expiresAt, anonymousCart);
-  const redirect = (route.query.redirect as string) || localizeHref('/account', effectiveLanguage);
+  // Same-site paths only (#14).
+  const redirect = localPath(route.query.redirect) || localizeHref('/account', effectiveLanguage);
   router.push(redirect);
 }
 

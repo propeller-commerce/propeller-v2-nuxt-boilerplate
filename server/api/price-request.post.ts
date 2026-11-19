@@ -8,16 +8,28 @@ import {
 } from '../utils/mail/template';
 import { getTranslations, labeller } from '../utils/mail/locales';
 import { guardFormRequest } from '../utils/formGuard';
-import { formRateLimiter, PRICE_REQUEST_RATE_LIMIT } from '../utils/rateLimit';
+import {
+  CONFIRMATION_DAILY_CAP,
+  formRateLimiter,
+  PRICE_REQUEST_RATE_LIMIT,
+  recipientCapKey,
+} from '../utils/rateLimit';
 import { getRecaptchaSettings } from '../utils/recaptcha';
+import { errorSummary } from '../utils/httpGuards';
+import { requestBearer, requestClientIp, sameOrigin, verifiedViewer } from '../utils/requestAuth';
 
 /**
  * POST /api/price-request — price-request submission. Same contract and
  * payload as the Next and Vue apps' equivalents; keep the three in step.
  *
+ * Login-only, like the page (`auth` middleware): the API must confirm the
+ * session (verified viewer), and the request must be same-origin JSON.
+ *
  * Sends twice: the shop gets the request with the shopper as reply-to, and the
  * shopper gets a confirmation. A failed confirmation does not fail the request
- * — the shop already has it — but it is logged.
+ * — the shop already has it — but it is logged. Confirmations are capped per
+ * recipient (3 a day, #10): past the cap the shop still gets the request, only
+ * the confirmation is skipped, so nobody can lock another address out.
  *
  * Both mails are translated. The shopper's copy uses the language they were
  * browsing in (sent in the payload); the shop's uses the shop default, so the
@@ -33,7 +45,7 @@ interface RequestItem {
 interface Payload {
   items?: RequestItem[];
   comment?: string;
-  /** The signed-in shopper. The list is only offered to authenticated users. */
+  /** The signed-in shopper's address; the route refuses a request without a verified session. */
   email?: string;
   name?: string;
   company?: string;
@@ -67,6 +79,11 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event);
   const shopLanguage = (config.boilerplateDefaultLanguage as string) || 'NL';
 
+  if (!sameOrigin(event, { json: true })) {
+    setResponseStatus(event, 403);
+    return { error: 'forbidden' };
+  }
+
   let body: Payload | null;
   try {
     body = (await readBody(event)) as Payload;
@@ -76,7 +93,7 @@ export default defineEventHandler(async (event) => {
 
   const guard = await guardFormRequest({
     route: '/api/price-request',
-    ip: getRequestIP(event, { xForwardedFor: true }) || 'unknown',
+    ip: requestClientIp(event),
     body,
     rule: PRICE_REQUEST_RATE_LIMIT,
     limiter: formRateLimiter,
@@ -95,6 +112,11 @@ export default defineEventHandler(async (event) => {
   if (guard.action === 'drop') {
     console.info('[api/price-request] honeypot filled, request dropped');
     return { ok: true };
+  }
+
+  if (!(await verifiedViewer(event, requestBearer(event)))) {
+    setResponseStatus(event, 401);
+    return { error: 'login_required' };
   }
 
   if (!body || typeof body !== 'object') {
@@ -202,9 +224,14 @@ export default defineEventHandler(async (event) => {
       }),
     });
   } catch (e) {
-    console.error('[api/price-request] send to shop failed:', e);
+    console.error('[api/price-request] send to shop failed:', errorSummary(e));
     setResponseStatus(event, 502);
     return { error: 'Failed to send the request' };
+  }
+
+  if (!formRateLimiter.hit(recipientCapKey('/api/price-request', email), CONFIRMATION_DAILY_CAP).allowed) {
+    console.info('[api/price-request] confirmation cap reached; request delivered, confirmation skipped');
+    return { ok: true };
   }
 
   // ── The shopper's confirmation, in their own language ─────────────────────
@@ -254,7 +281,7 @@ export default defineEventHandler(async (event) => {
       }),
     });
   } catch (e) {
-    console.error('[api/price-request] confirmation to shopper failed:', e);
+    console.error('[api/price-request] confirmation to shopper failed:', errorSummary(e));
   }
 
   return { ok: true };

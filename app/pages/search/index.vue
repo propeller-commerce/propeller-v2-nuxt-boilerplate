@@ -57,6 +57,7 @@
                 :onPriceFilterRemove="handlePriceFilterRemove"
                 :onClearFilters="handleClearFilters"
                 :labels="gridToolbarLabels"
+                :hidePriceSort="hidePriceSort"
               />
             </div>
 
@@ -173,7 +174,7 @@ import { useCartStore } from '~/stores/cart';
 import { useCompanyStore } from '~/stores/company';
 import { useLanguageStore } from '~/stores/language';
 import { usePriceStore } from '~/stores/price';
-import { configuration, localizeHref } from '~/utils/config';
+import { configuration, localizeHref, portalMode } from '~/utils/config';
 import { buildJsonLdContext } from '~/utils/seo';
 import { useTranslations } from '~/composables/useTranslations';
 import { useListingParams } from '~/composables/useCatalogListing';
@@ -183,6 +184,8 @@ import { trackAddToCart, trackSelectItem, trackViewItemList } from '~/lib/tracki
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+// Semi-closed / closed: a guest gets no PRICE sort (the server ignores it for them anyway).
+const hidePriceSort = computed(() => portalMode !== 'open' && !authStore.isAuthenticated);
 const cartStore = useCartStore();
 const companyStore = useCompanyStore();
 const languageStore = useLanguageStore();

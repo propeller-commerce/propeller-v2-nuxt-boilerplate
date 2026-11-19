@@ -43,12 +43,14 @@ import {
 import { cachedSdkFetch, stableStringify } from './cache';
 import { ANONYMOUS_CACHE_TTL_SECONDS, TAG_CATALOG, tagFor } from './tags';
 import type { ServerInfra } from './infra';
-import { isContentHidden } from '@propeller-commerce/propeller-v2-core-ui';
-import { hidePrices } from './hidePrices';
+import { forPriceViewer } from './hidePrices';
+import { listingForViewer, pricesHiddenFor } from './proxyGuards';
 
-// Semi-closed shops must not send prices to visitors who are not logged in.
+// Semi-closed and closed shops send prices only to a logged-in Contact/Customer (the same rule as
+// /api/graphql). core-ui's isContentHidden misses `closed` and treats any viewer object as logged in.
+// Cost prices never (applied before the anonymous cache stores the result).
 function forViewer<T>(infra: ServerInfra, data: T): T {
-  return isContentHidden(infra.portalMode, infra.user) ? hidePrices(data) : data;
+  return forPriceViewer(data, !pricesHiddenFor(infra.portalMode, infra.user));
 }
 
 // We type the fetched shapes loosely (the SDK + Vue UI package use slightly
@@ -95,6 +97,19 @@ const SEARCH_FIELDS: SearchFieldsInput[] = [
 const FILTER_AVAILABLE_ATTRIBUTE_INPUT: FilterAvailableAttributeInput = {
   isSearchable: true,
 };
+
+const SORT_FIELDS: ReadonlySet<string> = new Set(Object.values(ProductSortField));
+
+/** A sort field from a query string, only when the API knows it. */
+export function sortFieldParam(raw: unknown): ProductSortField | undefined {
+  return typeof raw === 'string' && SORT_FIELDS.has(raw) ? (raw as ProductSortField) : undefined;
+}
+
+/** A finite number from a query string, else undefined. */
+export function numberParam(raw: unknown): number | undefined {
+  const n = typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN;
+  return Number.isFinite(n) ? n : undefined;
+}
 
 export interface ListingFetchOptions {
   page?: number;
@@ -325,8 +340,10 @@ export async function fetchProduct(
 export async function fetchCategory(
   infra: ServerInfra,
   categoryId: number,
-  opts: ListingFetchOptions = {}
+  options: ListingFetchOptions = {}
 ): Promise<FetchedCategory | null> {
+  // No price range or PRICE sort for a viewer who may not see prices, before the cache key.
+  const opts = listingForViewer(options, pricesHiddenFor(infra.portalMode, infra.user));
   const lang = opts.language ?? infra.language;
   const sortField = opts.sortField ?? ProductSortField.CATEGORY_ORDER;
   const sortOrder = opts.sortOrder ?? SortOrder.DESC;
@@ -397,8 +414,10 @@ export async function fetchSearch(
   infra: ServerInfra,
   baseCategoryId: number,
   term: string,
-  opts: ListingFetchOptions = {}
+  options: ListingFetchOptions = {}
 ): Promise<ProductsResponse | null> {
+  // No price range or PRICE sort for a viewer who may not see prices, before the cache key.
+  const opts = listingForViewer(options, pricesHiddenFor(infra.portalMode, infra.user));
   const lang = opts.language ?? infra.language;
   const sortField = opts.sortField ?? ProductSortField.RELEVANCE;
   const sortOrder = opts.sortOrder ?? SortOrder.DESC;

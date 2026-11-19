@@ -229,6 +229,32 @@ endpoints and the SDK proxy — they **never reach the client bundle**.
   auto-posting to the ERP
 - `PUNCHOUT_CURRENCY` / `PUNCHOUT_TRANSFER_TARGET` — optional (default `EUR` /
   `_self`)
+- `PUNCHOUT_HOOK_HOSTS` — comma-separated host names a punchout cart may be
+  handed back to (OCI `HOOK_URL`, cXML `BrowserFormPost`). Empty: any https
+  host; http is always refused
+- `COOKIE_SIGNING_SECRET` — HMAC secret for the signed cookies (last order,
+  registration, punchout). Empty: derived from the order-editor key, with a
+  warning
+- `TRUSTED_PROXY_HOPS` — reverse proxies that append to `X-Forwarded-For`
+  (default 1); rate limits key on that hop, so only the reverse proxy may
+  reach the app port
+
+### API keys and roles
+
+- **`BOILERPLATE_API_KEY` (storefront key):** give it the storefront role
+  only. The proxy relays the browser's documents with it, so anything this key
+  may do, any visitor can do through `/api/graphql`.
+- **`BOILERPLATE_ORDER_EDITOR_API_KEY` (order-editor key):** server-only, role
+  `user:owner`, never sent to the browser. The server uses it for: the
+  checkout steps of the order this browser just placed (signed last-order
+  cookie), self-registration's company documents, order reads after an owner
+  check (required for the account order pages and the thank-you page), and
+  the PSP routes and webhooks.
+- The proxy sends elevated requests only as the SDK's own documents, pinned by
+  hash (`ORDER_READ_DOCUMENT_HASHES` and `ORDER_EDITOR_DOCUMENT_HASHES` in
+  `server/utils/orderEditorRouting.ts`, `REGISTRATION_DOCUMENT_HASHES` in
+  `server/utils/registrationRouting.ts`). An SDK upgrade that changes one of
+  those documents fails `npm run test:server` until the hash list is updated.
 
 **Public (`NUXT_PUBLIC_*` — inlined into the client bundle):**
 
@@ -246,11 +272,15 @@ endpoints and the SDK proxy — they **never reach the client bundle**.
 
 ## Form protection
 
-`POST /api/price-request` is public, so it is guarded in this order: rate
-limit, honeypot, reCAPTCHA, then validation.
+`POST /api/price-request` is guarded in this order: same-origin JSON, rate
+limit, honeypot, reCAPTCHA, login, then validation.
 
+- **Same origin:** a JSON body whose `Origin`, when sent, is this host,
+  `x-forwarded-host` or `NUXT_PUBLIC_SITE_URL`; otherwise `403`.
 - **Rate limit (always on):** 10 requests per 10 minutes per client IP,
-  in memory per server process. Over the limit answers `429`
+  in memory per server process. The client IP is the `X-Forwarded-For` hop
+  set by your own reverse proxy (`TRUSTED_PROXY_HOPS`, default 1), so only
+  the reverse proxy may reach the app port. Over the limit answers `429`
   `{ "error": "rate_limited" }` with a `Retry-After` header (seconds).
 - **Honeypot (always on):** a non-empty `website` field in the body is answered
   like a success, but no mail is sent.
@@ -262,6 +292,11 @@ limit, honeypot, reCAPTCHA, then validation.
   if Google cannot be reached it answers `503 { "error": "captcha_unavailable" }`.
   Create v3 keys at https://www.google.com/recaptcha/admin. reCAPTCHA sets
   Google cookies, so EU shops need cookie consent before turning it on.
+- **Login:** the page is login-only, and so is the route: without a session
+  the API accepts it answers `401 { "error": "login_required" }`.
+- **Confirmation cap:** at most 3 confirmation mails per recipient address a
+  day. Past the cap the shop still receives the request; only the shopper's
+  confirmation is skipped.
 
 ## Translations
 
@@ -525,13 +560,30 @@ SAP OCI), shops in a live session, and transfers the cart back as a requisition.
   `CXML_CONTACT_ID`, compares each one's `CXML_SHARED_SECRET` contact track
   attribute to the request's shared secret, mints a **one-time, 1-hour** magic
   token with the order-editor key, and returns a `PunchOutSetupResponse` whose
-  StartPage is `/api/punchout/enter`.
+  StartPage is `/api/punchout/enter`. The `BrowserFormPost` URL and the echo
+  values travel inside that StartPage sealed (signed, bound to the minted
+  token), never as plain query parameters.
 - **OCI**: no handshake — the ERP opens
   `/api/punchout/enter?mode=oci&mtoken=…&HOOK_URL=…` directly.
-- `enter` stores an httpOnly `punchout` cookie (survives magic-login's session
-  clear) and redirects to `/magic-login`. The cart page then shows **Transfer
-  cart to procurement** → `/api/punchout/transfer`, which builds the OCI
+- `enter` checks the return URL (https, and `PUNCHOUT_HOOK_HOSTS` when set),
+  stores the session in a signed 10-minute `punchout_pending` cookie bound to
+  the token, and redirects to `/magic-login`. Only when the magic-token
+  exchange of **that** token succeeds does the session become active (signed
+  `punchout` cookie, bound to the new login, plus the `punchout_active` flag).
+  A failed exchange, any other login and logout end it. The cart page then
+  shows **Transfer cart to procurement** → `/api/punchout/transfer`, which
+  re-checks the return URL before it reads or deletes the cart, builds the OCI
   `NEW_ITEM-*` set / cXML `PunchOutOrderMessage` and hands it back to the ERP.
+
+**Security note: the entry link logs in.** Opening a punchout link with a valid
+magic token logs the browser in as that token's contact, from a plain GET. That
+is how OCI/cXML punchout works, and it means whoever holds an unused token
+can log someone else into that account (login CSRF by design). Keep tokens
+one-time and short-lived (the cXML setup mints them for one use and one hour),
+set `PUNCHOUT_HOOK_HOSTS` to your buyers' procurement hosts, and keep the
+shop's frame protection: pages send `frame-ancestors 'none'` and
+`X-Frame-Options: DENY`, so a procurement system that embeds the shop in an
+iframe needs that header relaxed for its origin.
 
 **Configuring the output fields** — override any field in
 `PUNCHOUT_MAPPINGS.ociMapping` / `cxmlMapping` in `server/utils/punchout.ts`

@@ -1,0 +1,91 @@
+import { createHash } from 'node:crypto';
+import { print, type DocumentNode } from 'graphql';
+import type { SingleField } from './orderEditorRouting.ts';
+import { signCookieValue, verifyCookieValue } from './signedCookie.ts';
+
+/**
+ * Public self-registration (vue-ui RegisterForm, contact path) creates a company and its addresses
+ * from the browser. A storefront key limited to its role may not, so the proxy sends exactly these
+ * SDK documents with the order-editor key and without the Bearer: companyCreate for anonymous callers
+ * (rate-limited in the proxy, input reduced to the registration fields), companyAddressCreate only for
+ * the company this browser just created (signed httpOnly cookie, 15 min), once per address type.
+ */
+
+// sha256 of print(parse(document)) of the installed SDK's documents; the test fails after an SDK
+// upgrade that changes them, until these are updated.
+export const REGISTRATION_DOCUMENT_HASHES = {
+  companyCreate: 'f63fd68ed60135a104ba16755c22692403334038292e6861d9a0eaedd17d89ae',
+  companyAddressCreate: 'b4dd23230e005aaa5ebd462f6f59b89cbb06ed4a8b1b1cad870ab27f2687fe1b',
+} as const;
+
+export const REGISTRATION_COOKIE = 'propeller_registration';
+export const REGISTRATION_MAX_AGE = 15 * 60;
+export const REGISTRATION_PURPOSE = 'registration';
+
+const ADDRESS_FLAG: Record<string, string> = { invoice: 'i', delivery: 'd' };
+
+export interface Registration {
+  companyId: number;
+  used: string;
+}
+
+export interface RegistrationContext {
+  /** No session cookie and no Authorization header. */
+  isAnonymous: boolean;
+  /** From a verified registration cookie. */
+  registration: Registration | null;
+}
+
+export type RegistrationStep = { kind: 'company' } | { kind: 'address'; companyId: number; flag: string };
+
+/** sha256 of the normalized (printed) document. */
+export function documentHash(doc: DocumentNode): string {
+  return createHash('sha256').update(print(doc)).digest('hex');
+}
+
+export function registrationStep(
+  single: SingleField | null,
+  doc: DocumentNode,
+  variables: unknown,
+  ctx: RegistrationContext,
+): RegistrationStep | null {
+  const name = single?.operation === 'mutation' ? single.field.name.value : null;
+  // Only these two fields are worth printing and hashing.
+  if (name === 'companyCreate') {
+    return ctx.isAnonymous && documentHash(doc) === REGISTRATION_DOCUMENT_HASHES.companyCreate ? { kind: 'company' } : null;
+  }
+  if (name !== 'companyAddressCreate' || !ctx.registration) return null;
+  if (documentHash(doc) !== REGISTRATION_DOCUMENT_HASHES.companyAddressCreate) return null;
+  const input = (variables as { input?: { companyId?: unknown; type?: unknown } } | null)?.input;
+  const flag = typeof input?.type === 'string' ? ADDRESS_FLAG[input.type] : undefined;
+  if (!flag || input?.companyId !== ctx.registration.companyId) return null;
+  if (ctx.registration.used.includes(flag)) return null;
+  return { kind: 'address', companyId: ctx.registration.companyId, flag };
+}
+
+/** The new company id from a companyCreate response, else null. */
+export function createdCompanyId(response: unknown): number | null {
+  const id = (response as { data?: { companyCreate?: { companyId?: unknown } | null } } | null)?.data?.companyCreate
+    ?.companyId;
+  return typeof id === 'number' && Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+export function signRegistration(secret: string, companyId: number, used = '', now?: number): string {
+  return signCookieValue(secret, REGISTRATION_PURPOSE, `${companyId}:${used}`, REGISTRATION_MAX_AGE, now);
+}
+
+export function verifyRegistration(secret: string, value: string | null | undefined, now?: number): Registration | null {
+  const payload = verifyCookieValue(secret, REGISTRATION_PURPOSE, value, now);
+  const match = payload ? /^([1-9]\d{0,14}):([id]{0,2})$/.exec(payload) : null;
+  return match ? { companyId: Number(match[1]), used: match[2]! } : null;
+}
+
+// The fields RegisterForm sends; anything else (debtorId, parentId, …) could tie the new company to an existing one.
+const COMPANY_INPUT_FIELDS = new Set(['name', 'taxNumber', 'cocNumber', 'email', 'phone']);
+
+/** Variables for an elevated companyCreate, with `input` reduced to the registration fields. */
+export function companyCreateVariables(variables: unknown): Record<string, unknown> {
+  const vars = variables && typeof variables === 'object' ? (variables as Record<string, unknown>) : {};
+  const input = vars.input && typeof vars.input === 'object' ? (vars.input as Record<string, unknown>) : {};
+  return { ...vars, input: Object.fromEntries(Object.entries(input).filter(([k]) => COMPANY_INPUT_FIELDS.has(k))) };
+}

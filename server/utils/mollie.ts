@@ -32,12 +32,12 @@ import { GraphQLClient } from '@propeller-commerce/propeller-sdk-v2';
  * mutations, but our backend requires the order-editor key for them too —
  * otherwise `paymentCreate`/`paymentUpdate` 403 with "Forbidden resource".
  * `orderEditorMutations` REPLACES the default list, so we include the defaults
- * plus the payment mutations.
+ * (minus passwordResetLink, which this flow never sends and which must never run
+ * with this key: it returns the reset link) plus the payment mutations.
  */
 const MOLLIE_ORDER_EDITOR_MUTATIONS = [
-  // SDK defaults (must be repeated — this option replaces, not extends):
+  // SDK defaults (must be repeated — this option replaces, not extends), without passwordResetLink:
   'orderSetStatus',
-  'passwordResetLink',
   'triggerQuoteSendRequest',
   'triggerOrderSendConfirm',
   // Payment mutations the Mollie flow issues, gated the same way:
@@ -132,7 +132,8 @@ export function getMollieProvider(event: H3Event): MollieProvider {
   const config = useRuntimeConfig(event);
   const liveApiKey = config.mollieLiveKey || '';
   const testApiKey = config.mollieTestKey || '';
-  const testMode = (config.mollieTestMode || 'true').trim().toLowerCase() === 'true';
+  // String(): a runtime NUXT_MOLLIE_TEST_MODE=false arrives as a boolean (`false || 'true'` was test mode).
+  const testMode = String(config.mollieTestMode ?? 'true').trim().toLowerCase() === 'true';
 
   _provider = new MollieProvider(
     { liveApiKey, testApiKey, testMode },

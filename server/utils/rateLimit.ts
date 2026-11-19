@@ -14,6 +14,14 @@ export interface RateLimiter {
 
 export const PRICE_REQUEST_RATE_LIMIT: RateLimitRule = { limit: 10, windowMs: 10 * 60 * 1000 };
 
+/** Confirmation mails to one address, whatever IP or account the requests come from (#10). */
+export const CONFIRMATION_DAILY_CAP: RateLimitRule = { limit: 3, windowMs: 24 * 60 * 60 * 1000 };
+
+/** Limiter key for the per-recipient cap: case and surrounding space don't make a new address. */
+export function recipientCapKey(route: string, email: string): string {
+  return `${route}:to:${email.trim().toLowerCase()}`;
+}
+
 // Hard cap so spoofed IPs cannot grow the map without bound.
 const MAX_ENTRIES = 10_000;
 

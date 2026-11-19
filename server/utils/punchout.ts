@@ -13,12 +13,72 @@
  */
 
 import type { H3Event } from 'h3';
+import { deleteCookie, getCookie, setCookie } from 'h3';
 import { useRuntimeConfig } from 'nitropack/runtime';
 import { GraphQLClient, MagicTokenService, AttributeService } from '@propeller-commerce/propeller-sdk-v2';
 import { validateSharedSecret, type Mapping } from '@propeller-commerce/propeller-v2-punchout';
+import { cookieSigningSecret, requestBearer, secureCookie } from './requestAuth';
+import {
+  hookUrl,
+  openPunchout,
+  PENDING_MAX_AGE,
+  PUNCHOUT_COOKIE,
+  PUNCHOUT_FLAG_COOKIE,
+  PUNCHOUT_MAX_AGE,
+  PUNCHOUT_PENDING_COOKIE,
+  PURPOSE,
+  sealPunchout,
+  type PunchoutSession,
+} from './punchoutSession';
 
-export const PUNCHOUT_COOKIE = 'punchout';
-export const PUNCHOUT_FLAG_COOKIE = 'punchout_active';
+/** The return URL when it may receive a cart: https, and in PUNCHOUT_HOOK_HOSTS when that is set. */
+export function allowedHookUrl(event: H3Event, raw: unknown): URL | null {
+  const config = useRuntimeConfig(event);
+  return hookUrl(raw, String(config.punchoutHookHosts || process.env.PUNCHOUT_HOOK_HOSTS || ''));
+}
+
+const cookieBase = (event: H3Event, maxAge: number) =>
+  ({ path: '/', sameSite: 'lax', secure: secureCookie(event), maxAge }) as const;
+
+/** `enter`: remember the session until the magic-token exchange of `mtoken` succeeds. */
+export function setPendingPunchout(event: H3Event, session: PunchoutSession, mtoken: string): boolean {
+  const value = sealPunchout(cookieSigningSecret(event), PURPOSE.pending, session, mtoken, PENDING_MAX_AGE);
+  if (!value) return false;
+  setCookie(event, PUNCHOUT_PENDING_COOKIE, value, { ...cookieBase(event, PENDING_MAX_AGE), httpOnly: true });
+  return true;
+}
+
+/**
+ * Clear the punchout cookies that are present. `pending: false` keeps the pending one: the
+ * magic-login page logs out right before its exchange, and a pending session activates only through
+ * that exchange.
+ */
+export function clearPunchout(event: H3Event, { pending = true } = {}): void {
+  const names = [PUNCHOUT_COOKIE, PUNCHOUT_FLAG_COOKIE, ...(pending ? [PUNCHOUT_PENDING_COOKIE] : [])];
+  for (const name of names) if (getCookie(event, name) !== undefined) deleteCookie(event, name, { path: '/' });
+}
+
+/**
+ * The proxy relayed a magicTokenLogin: activate the pending session when this exchange of its own
+ * token succeeded, bound to the access token it produced; any other magic login clears punchout.
+ */
+export function settlePunchoutLogin(event: H3Event, token: string, accessToken: string | null): void {
+  const secret = cookieSigningSecret(event);
+  const pending = openPunchout(secret, PURPOSE.pending, getCookie(event, PUNCHOUT_PENDING_COOKIE), token);
+  const active = pending && accessToken ? sealPunchout(secret, PURPOSE.active, pending, accessToken, PUNCHOUT_MAX_AGE) : '';
+  if (!active) {
+    clearPunchout(event);
+    return;
+  }
+  setCookie(event, PUNCHOUT_COOKIE, active, { ...cookieBase(event, PUNCHOUT_MAX_AGE), httpOnly: true });
+  setCookie(event, PUNCHOUT_FLAG_COOKIE, pending!.mode, { ...cookieBase(event, PUNCHOUT_MAX_AGE), httpOnly: false });
+  deleteCookie(event, PUNCHOUT_PENDING_COOKIE, { path: '/' });
+}
+
+/** The active session when it belongs to `accessToken` (default: the access_token cookie). */
+export function activePunchout(event: H3Event, accessToken = requestBearer(event)): PunchoutSession | null {
+  return openPunchout(cookieSigningSecret(event), PURPOSE.active, getCookie(event, PUNCHOUT_COOKIE), accessToken);
+}
 
 /** Contact track attribute holding the cXML shared secret (backend side). */
 const CXML_SHARED_SECRET_ATTR = 'CXML_SHARED_SECRET';
@@ -45,7 +105,8 @@ export const PUNCHOUT_MAPPINGS: { ociMapping: Partial<Mapping>; cxmlMapping: Par
 
 export function isPunchoutEnabled(event: H3Event): boolean {
   const config = useRuntimeConfig(event);
-  return (config.punchoutEnabled || '').trim().toLowerCase() === 'true';
+  // String(): a runtime NUXT_PUNCHOUT_ENABLED=true arrives as a boolean.
+  return String(config.punchoutEnabled ?? '').trim().toLowerCase() === 'true';
 }
 
 /**
@@ -55,7 +116,7 @@ export function isPunchoutEnabled(event: H3Event): boolean {
  */
 export function isPunchoutDebug(event: H3Event): boolean {
   const config = useRuntimeConfig(event);
-  return (config.punchoutDebug || '').trim().toLowerCase() === 'true';
+  return String(config.punchoutDebug ?? '').trim().toLowerCase() === 'true';
 }
 
 export function punchoutContext(event: H3Event) {
@@ -70,11 +131,11 @@ export function punchoutContext(event: H3Event) {
 /**
  * `magicTokenCreate` is admin-gated — route it through the order-editor key by
  * adding it to the editor mutation set (same trick server/utils/msp.ts uses for
- * paymentCreate). REPLACES the SDK default list, so the defaults are repeated.
+ * paymentCreate). REPLACES the SDK default list, so the defaults are repeated (minus
+ * passwordResetLink, which must never run with this key: it returns the reset link).
  */
 const PUNCHOUT_ORDER_EDITOR_MUTATIONS = [
   'orderSetStatus',
-  'passwordResetLink',
   'triggerQuoteSendRequest',
   'triggerOrderSendConfirm',
   'magicTokenCreate',

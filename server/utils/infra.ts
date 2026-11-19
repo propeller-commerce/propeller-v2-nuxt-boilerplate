@@ -19,6 +19,8 @@ import {
   type Customer,
 } from '@propeller-commerce/propeller-sdk-v2';
 import { createServices, toPlain, type Services } from '@propeller-commerce/propeller-v2-vue-ui/shared';
+import { strictestPortalMode } from './proxyGuards';
+import { cookieToken } from './httpGuards';
 
 export interface ServerInfra {
   client: GraphQLClient;
@@ -42,12 +44,6 @@ interface CreateServerClientOptions {
   endpoint?: string;
   apiKey?: string;
   getAccessToken?: () => string | undefined;
-}
-
-function readPortalMode(raw: string): string {
-  const lower = raw.trim().toLowerCase();
-  if (lower === 'semiclosed') return 'semi-closed';
-  return lower || 'open';
 }
 
 function createServerClient(event: H3Event, opts: CreateServerClientOptions = {}): GraphQLClient {
@@ -118,7 +114,7 @@ function readSelectedCompanyId(event: H3Event): number | undefined {
  * True when the request carries an `access_token` cookie.
  */
 export function hasAuthCookie(event: H3Event): boolean {
-  return !!getCookie(event, 'access_token');
+  return !!cookieToken(getCookie(event, 'access_token'));
 }
 
 /**
@@ -127,7 +123,8 @@ export function hasAuthCookie(event: H3Event): boolean {
  */
 export async function getServerInfra(event: H3Event): Promise<ServerInfra> {
   const runtimeConfig = useRuntimeConfig(event);
-  const token = getCookie(event, 'access_token');
+  // A blank cookie is no session: no viewer lookup, prices stay gated.
+  const token = cookieToken(getCookie(event, 'access_token'));
   const includeTax = readIncludeTax(event);
   const selectedCompanyId = readSelectedCompanyId(event);
 
@@ -141,7 +138,7 @@ export async function getServerInfra(event: H3Event): Promise<ServerInfra> {
     services,
     user,
     language: runtimeConfig.boilerplateDefaultLanguage || 'NL',
-    portalMode: readPortalMode(runtimeConfig.boilerplatePortalMode || 'open'),
+    portalMode: strictestPortalMode(runtimeConfig.boilerplatePortalMode, runtimeConfig.public.portalMode),
     currency: runtimeConfig.boilerplateCurrency || '€',
     includeTax,
     selectedCompanyId,
@@ -162,7 +159,7 @@ export function getAnonymousInfra(event: H3Event): ServerInfra {
     services,
     user: null,
     language: runtimeConfig.boilerplateDefaultLanguage || 'NL',
-    portalMode: readPortalMode(runtimeConfig.boilerplatePortalMode || 'open'),
+    portalMode: strictestPortalMode(runtimeConfig.boilerplatePortalMode, runtimeConfig.public.portalMode),
     currency: runtimeConfig.boilerplateCurrency || '€',
     includeTax: false,
     cacheable: true,
@@ -183,7 +180,7 @@ export function getAnonymousInfraWithTax(event: H3Event): ServerInfra {
     services,
     user: null,
     language: runtimeConfig.boilerplateDefaultLanguage || 'NL',
-    portalMode: readPortalMode(runtimeConfig.boilerplatePortalMode || 'open'),
+    portalMode: strictestPortalMode(runtimeConfig.boilerplatePortalMode, runtimeConfig.public.portalMode),
     currency: runtimeConfig.boilerplateCurrency || '€',
     includeTax,
     cacheable: false,

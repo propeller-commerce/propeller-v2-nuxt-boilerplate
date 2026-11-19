@@ -15,6 +15,7 @@
 
 import { bustTag } from '../utils/cache';
 import { TAG_CATALOG } from '../utils/tags';
+import { errorSummary, safeEqual } from '../utils/httpGuards';
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event);
@@ -25,8 +26,8 @@ export default defineEventHandler(async (event) => {
     return { error: 'revalidation endpoint not configured' };
   }
 
-  const provided = getHeader(event, 'x-revalidate-secret');
-  if (provided !== expected) {
+  const provided = getHeader(event, 'x-revalidate-secret') || '';
+  if (!safeEqual(provided, expected)) {
     setResponseStatus(event, 401);
     return { error: 'unauthorized' };
   }
@@ -54,7 +55,8 @@ export default defineEventHandler(async (event) => {
     const cleared = await bustTag(effective);
     return { ok: true, tag, cleared };
   } catch (e) {
+    console.error('[revalidate] failed:', errorSummary(e));
     setResponseStatus(event, 500);
-    return { error: e instanceof Error ? e.message : 'revalidation failed' };
+    return { error: 'revalidation failed' };
   }
 });

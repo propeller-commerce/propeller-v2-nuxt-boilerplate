@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRateLimiter, PRICE_REQUEST_RATE_LIMIT } from '../../server/utils/rateLimit.ts';
+import {
+  CONFIRMATION_DAILY_CAP,
+  createRateLimiter,
+  PRICE_REQUEST_RATE_LIMIT,
+  recipientCapKey,
+} from '../../server/utils/rateLimit.ts';
 
 const clock = (start = 0) => {
   let t = start;
@@ -61,4 +66,16 @@ test('expired entries are evicted', () => {
   c.advance(1_000);
   limiter.hit('c', rule);
   assert.equal(limiter.size(), 1);
+});
+
+test('confirmations: 3 a day per recipient, however the address is spelled', () => {
+  const c = clock();
+  const limiter = createRateLimiter(c.now);
+  const hits = ['a@x.test', ' A@X.test', 'a@x.TEST ', 'a@x.test'].map(
+    (to) => limiter.hit(recipientCapKey('/api/price-request', to), CONFIRMATION_DAILY_CAP).allowed,
+  );
+  assert.deepEqual(hits, [true, true, true, false]);
+  assert.equal(limiter.hit(recipientCapKey('/api/price-request', 'b@x.test'), CONFIRMATION_DAILY_CAP).allowed, true);
+  c.advance(24 * 60 * 60 * 1000);
+  assert.equal(limiter.hit(recipientCapKey('/api/price-request', 'a@x.test'), CONFIRMATION_DAILY_CAP).allowed, true);
 });

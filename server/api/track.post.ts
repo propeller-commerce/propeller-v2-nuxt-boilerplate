@@ -1,6 +1,10 @@
 import crypto from 'node:crypto';
 import { EVENT_NAME_SET } from '../../app/lib/tracking/taxonomy';
 import { getTrackingPool } from '../utils/trackingDb';
+import { formRateLimiter, type RateLimitRule } from '../utils/rateLimit';
+import { requestBearer, requestClientIp, sameOrigin, verifiedViewer } from '../utils/requestAuth';
+import { viewerIdentity } from '../utils/viewer';
+import { errorSummary } from '../utils/httpGuards';
 
 /**
  * Behaviour-event ingest.
@@ -22,6 +26,8 @@ const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 const VISITOR_COOKIE = 'pr_vid';
 const VISITOR_MAX_AGE = 365 * 24 * 60 * 60;
+/** A page sends a handful of beacons a minute. */
+const TRACK_RATE_LIMIT: RateLimitRule = { limit: 120, windowMs: 60_000 };
 
 type Json = Record<string, unknown>;
 
@@ -41,8 +47,6 @@ const uuid = (v: unknown): string | null => {
   return s && /^[0-9a-fA-F-]{36}$/.test(s) ? s : null;
 };
 
-const USER_MODES = new Set(['anonymous', 'b2c', 'b2b']);
-
 /** Columns promoted out of `props`; whatever is left is stored as JSON. */
 const PROMOTED = new Set([
   'page_type', 'entity_type', 'entity_id', 'entity_name',
@@ -60,6 +64,13 @@ export default defineEventHandler(async (event) => {
     const pool = getTrackingPool();
     if (!pool) return null;
 
+    // Size first, then origin and a per-IP limit, before the body is read (#16).
+    // ponytail: a chunked body without Content-Length is read whole before the size check; the
+    // reverse proxy's body limit (nginx client_max_body_size) bounds it.
+    if (Number(getHeader(event, 'content-length')) > MAX_BODY_BYTES) return null;
+    if (!sameOrigin(event)) return null;
+    if (!formRateLimiter.hit(`track:${requestClientIp(event)}`, TRACK_RATE_LIMIT).allowed) return null;
+
     // Read raw: sendBeacon posts text/plain, and it is the only transport that
     // survives the PSP redirect and tab close. `readBody` would parse by
     // content-type and hand back a string for exactly that case, so parse here.
@@ -70,9 +81,9 @@ export default defineEventHandler(async (event) => {
     const events = Array.isArray(body.events) ? body.events.slice(0, MAX_EVENTS) : [];
     const ctx = (body.context ?? {}) as Json;
 
-    // Identity resolved here, never taken from the body: the channel is ours and
-    // the visitor id comes from the cookie, so a client cannot claim to be
-    // someone else's visitor.
+    // Identity resolved here, never taken from the body: the channel is ours,
+    // the visitor id comes from the cookie and the contact/customer/company from
+    // the verified session, so a client cannot claim to be someone else.
     const cookieVisitor = uuid(getCookie(event, VISITOR_COOKIE));
     const visitorId = cookieVisitor ?? crypto.randomUUID();
     if (!cookieVisitor) {
@@ -89,10 +100,8 @@ export default defineEventHandler(async (event) => {
     const channelId = Number(config.public?.channelId) || 1;
 
     const sessionId = uuid(ctx.sessionId) ?? visitorId;
-    const userMode = USER_MODES.has(String(ctx.userMode)) ? String(ctx.userMode) : 'anonymous';
-    const contactId = num(ctx.contactId);
-    const customerId = num(ctx.customerId);
-    const companyId = num(ctx.companyId);
+    const viewer = await verifiedViewer(event, requestBearer(event));
+    const { userMode, contactId, customerId, companyId } = viewerIdentity(viewer, ctx.companyId);
     const language = str(ctx.language, 2);
     const currency = str(ctx.currency, 3);
 
@@ -150,7 +159,7 @@ export default defineEventHandler(async (event) => {
     );
   } catch (error) {
     // Never surface an error: a failed batch is dropped by design.
-    console.error('[track] ingest failed:', error instanceof Error ? error.message : error);
+    console.error('[track] ingest failed:', errorSummary(error));
   }
 
   return null;

@@ -122,6 +122,11 @@ export default defineNuxtConfig({
     boilerplateApiKey: process.env.BOILERPLATE_API_KEY || '',
     boilerplateOrderEditorApiKey: process.env.BOILERPLATE_ORDER_EDITOR_API_KEY || '',
     boilerplatePortalMode: process.env.BOILERPLATE_PORTAL_MODE || 'open',
+    // HMAC secret for signed cookies (last order, registration, …). Unset: derived from the
+    // order-editor key, with a warning. Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    cookieSigningSecret: process.env.COOKIE_SIGNING_SECRET || '',
+    // Reverse proxies that append to X-Forwarded-For (nginx alone: 1); see server/utils/clientIp.ts.
+    trustedProxyHops: process.env.TRUSTED_PROXY_HOPS || '1',
     boilerplateDefaultLanguage: process.env.BOILERPLATE_DEFAULT_LANGUAGE || 'NL',
     boilerplateCurrency: process.env.BOILERPLATE_CURRENCY || '€',
     // ── Behaviour tracking ──────────────────────────────────────
@@ -201,6 +206,9 @@ export default defineNuxtConfig({
     punchoutTransferTarget: process.env.PUNCHOUT_TRANSFER_TARGET || '_self',
     // Debug: transfer renders a readable OCI/cXML preview instead of auto-POST.
     punchoutDebug: process.env.PUNCHOUT_DEBUG || '',
+    // Comma-separated host names a cart may be handed back to (OCI HOOK_URL / cXML
+    // BrowserFormPost). Empty: any https host. Always https only.
+    punchoutHookHosts: process.env.PUNCHOUT_HOOK_HOSTS || '',
 
     public: {
       // The client talks to /api/graphql by default (proxy injects apikey

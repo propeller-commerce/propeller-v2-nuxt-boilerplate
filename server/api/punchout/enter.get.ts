@@ -1,20 +1,29 @@
 /**
- * GET /api/punchout/enter — capture the punchout session, redirect to magic-login.
+ * GET /api/punchout/enter — open a punchout session, redirect to magic-login.
  *
- * The URL the ERP opens (OCI) or the cXML StartPage points at. Stores the
- * session (return address + OCI params / cXML echo credentials) in an httpOnly
- * cookie, drops a readable flag cookie for the cart page's transfer button, then
- * redirects into the existing magic-login flow. The `punchout` cookie is
- * separate from the auth cookies, so it survives magic-login's session clear.
+ * The URL the ERP opens (OCI) or the cXML StartPage points at. It does NOT
+ * activate anything by itself (#20): it stores the session (return address +
+ * OCI params / cXML echo values) in a signed, 10-minute `punchout_pending`
+ * cookie bound to sha256(mtoken), and redirects into the magic-login flow. Only
+ * a successful magicTokenLogin of that same token (seen by /api/graphql)
+ * promotes it to the signed `punchout` session and the `punchout_active` flag
+ * the cart page reads; a failed exchange clears it.
+ *
+ * - OCI: the return address is the `HOOK_URL` query parameter (https only, and
+ *   in PUNCHOUT_HOOK_HOSTS when that is set), checked here and again at transfer.
+ * - cXML: the BrowserFormPost and echo values come sealed from the
+ *   shared-secret-authenticated setup (`setup`, bound to the minted token);
+ *   loose query parameters are ignored.
+ *
+ * Logging in from a GET link is how punchout works (N2): whoever holds a valid
+ * magic token is logged in as its contact. See README "PunchOut".
  */
 
 import { mapOciParams } from '@propeller-commerce/propeller-v2-punchout';
-import {
-  isPunchoutEnabled,
-  punchoutContext,
-  PUNCHOUT_COOKIE,
-  PUNCHOUT_FLAG_COOKIE,
-} from '../../utils/punchout';
+import { localPath } from '../../../app/lib/localPath';
+import { allowedHookUrl, isPunchoutEnabled, punchoutContext, setPendingPunchout } from '../../utils/punchout';
+import { openPunchout, PURPOSE, type PunchoutSession } from '../../utils/punchoutSession';
+import { cookieSigningSecret } from '../../utils/requestAuth';
 
 export default defineEventHandler(async (event) => {
   if (!isPunchoutEnabled(event)) {
@@ -23,36 +32,37 @@ export default defineEventHandler(async (event) => {
   }
 
   const q = getQuery(event);
-  const mtoken = String(q.mtoken || '');
+  const mtoken = typeof q.mtoken === 'string' ? q.mtoken : '';
   if (!mtoken) {
     setResponseStatus(event, 400);
     return 'Missing mtoken';
   }
 
-  const { transferTarget } = punchoutContext(event);
-  const mode = q.mode === 'cxml' ? 'cxml' : 'oci';
-  const returnUrl = String(q.HOOK_URL || q.hook_url || q.returnUrl || '');
-
-  const session =
-    mode === 'oci'
-      ? { mode, returnUrl, target: transferTarget, session: mapOciParams(q as Record<string, string>) }
+  const session: PunchoutSession | null =
+    q.mode === 'cxml'
+      ? openPunchout(cookieSigningSecret(event), PURPOSE.setup, typeof q.setup === 'string' ? q.setup : '', mtoken)
       : {
-          mode,
-          returnUrl,
-          target: transferTarget,
-          session: {},
-          buyerCookie: q.buyer_cookie ? String(q.buyer_cookie) : undefined,
-          from: q.cxml_from ? String(q.cxml_from) : undefined,
-          to: q.cxml_to ? String(q.cxml_to) : undefined,
-          deploymentMode: String(q.deployment_mode || 'test'),
+          mode: 'oci',
+          returnUrl: String(q.HOOK_URL || q.hook_url || q.returnUrl || ''),
+          target: punchoutContext(event).transferTarget,
+          session: mapOciParams(q as Record<string, string>),
         };
+  if (!session) {
+    setResponseStatus(event, 400);
+    return 'Invalid punchout start link';
+  }
+  if (!allowedHookUrl(event, session.returnUrl)) {
+    setResponseStatus(event, 400);
+    return 'Invalid return URL';
+  }
+  if (!setPendingPunchout(event, session, mtoken)) {
+    console.error('[punchout] no cookie signing secret (COOKIE_SIGNING_SECRET or the order-editor key)');
+    setResponseStatus(event, 503);
+    return 'PunchOut not configured';
+  }
 
-  const isProd = process.env.NODE_ENV === 'production';
-  const base = { path: '/', sameSite: 'lax' as const, secure: isProd, maxAge: 3600 };
-  setCookie(event, PUNCHOUT_COOKIE, JSON.stringify(session), { ...base, httpOnly: true });
-  setCookie(event, PUNCHOUT_FLAG_COOKIE, mode, { ...base, httpOnly: false });
-
-  const redirect = String(q.redirect || '/cart');
+  // Same-site paths only (#14).
+  const redirect = localPath(q.redirect) || '/cart';
   const target = `/magic-login?mtoken=${encodeURIComponent(mtoken)}&redirect=${encodeURIComponent(redirect)}`;
   return sendRedirect(event, target, 302);
 });

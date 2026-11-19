@@ -1,6 +1,6 @@
 import { getListingInfra } from '../../utils/infra';
 import { parseTextFiltersParam } from '../../utils/textFilters';
-import { fetchSearch, resolveBaseCategoryId } from '../../utils/fetchers';
+import { fetchSearch, numberParam, resolveBaseCategoryId, sortFieldParam } from '../../utils/fetchers';
 
 export default defineEventHandler(async (event) => {
   const q = getQuery(event);
@@ -28,11 +28,11 @@ export default defineEventHandler(async (event) => {
   return fetchSearch(infra, baseCategoryId, term, {
     page: q.page ? Number(q.page) : undefined,
     offset: q.offset ? Number(q.offset) : undefined,
-    sortField: typeof q.sortField === 'string' ? (q.sortField as never) : undefined,
+    sortField: sortFieldParam(q.sortField),
     sortOrder: q.sortOrder === 'ASC' ? ('ASC' as never) : q.sortOrder === 'DESC' ? ('DESC' as never) : undefined,
     textFilters,
-    priceFilterMin: q.minPrice ? Number(q.minPrice) : undefined,
-    priceFilterMax: q.maxPrice ? Number(q.maxPrice) : undefined,
+    priceFilterMin: numberParam(q.minPrice),
+    priceFilterMax: numberParam(q.maxPrice),
     language: typeof q.language === 'string' ? q.language : undefined,
   });
 });

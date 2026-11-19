@@ -1,3 +1,4 @@
+import { errorSummary } from '../../utils/httpGuards';
 import { classifyDbError, isTrackingConfigured, STATUS_HINTS, todayLocal, addDays } from '../../utils/trackingDb';
 import {
   TRACKER_METRICS,
@@ -74,16 +75,16 @@ export default defineEventHandler(async (event) => {
     setResponseHeader(event, 'Cache-Control', 'no-store');
     return { metric, from, to: safeTo, data };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'query failed';
     // A setup problem is not a server fault: 503 with the fix attached, so the
     // dashboard can say "run tracking:init" instead of relaying ER_NO_SUCH_TABLE.
+    // The database's own message stays in the server log, by name and code only (#15).
     const status = classifyDbError(error);
     if (status) {
       setResponseStatus(event, 503);
-      return { error: message, status, hint: STATUS_HINTS[status], metric };
+      return { error: 'tracking database not ready', status, hint: STATUS_HINTS[status], metric };
     }
-    console.error('[tracker] query failed:', message);
+    console.error('[tracker] query failed:', errorSummary(error));
     setResponseStatus(event, 500);
-    return { error: message, metric };
+    return { error: 'query failed', metric };
   }
 });

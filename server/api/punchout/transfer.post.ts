@@ -6,6 +6,12 @@
  * the OCI NEW_ITEM field set or the cXML PunchOutOrderMessage per the punchout
  * session, deletes the shop cart, and returns a self-submitting form that POSTs
  * the payload back to the ERP.
+ *
+ * #20: same-origin form POST only; the session must be the signed one the
+ * magic-token exchange activated for this very login (bound to the
+ * access_token cookie); the return URL is re-checked (https, PUNCHOUT_HOOK_HOSTS)
+ * before the cart is read or deleted, so a refused URL keeps the cart. This
+ * response's CSP lets its form post to that one origin only.
  */
 
 import { CartService } from '@propeller-commerce/propeller-sdk-v2';
@@ -18,40 +24,33 @@ import {
   type PunchoutCart,
 } from '@propeller-commerce/propeller-v2-punchout';
 import {
+  activePunchout,
+  allowedHookUrl,
+  clearPunchout,
   createAuthedClient,
   punchoutContext,
   isPunchoutDebug,
   CART_IMAGE_FILTERS,
   PUNCHOUT_MAPPINGS,
-  PUNCHOUT_COOKIE,
-  PUNCHOUT_FLAG_COOKIE,
 } from '../../utils/punchout';
+import { requestBearer, sameOrigin } from '../../utils/requestAuth';
+import { allowFormTarget } from '../../utils/securityHeaders';
+import { errorSummary } from '../../utils/httpGuards';
 
 export default defineEventHandler(async (event) => {
-  const rawSession = getCookie(event, PUNCHOUT_COOKIE);
-  if (!rawSession) {
+  if (!sameOrigin(event)) {
+    setResponseStatus(event, 403);
+    return 'Forbidden';
+  }
+  const session = activePunchout(event);
+  if (!session) {
     setResponseStatus(event, 400);
     return 'No punchout session';
   }
-  let session: {
-    mode: 'oci' | 'cxml';
-    returnUrl: string;
-    target: string;
-    session: Record<string, string>;
-    buyerCookie?: string;
-    from?: string;
-    to?: string;
-    deploymentMode?: string;
-  };
-  try {
-    session = JSON.parse(rawSession);
-  } catch {
+  const hook = allowedHookUrl(event, session.returnUrl);
+  if (!hook) {
     setResponseStatus(event, 400);
-    return 'Bad punchout session';
-  }
-  if (!session.returnUrl) {
-    setResponseStatus(event, 400);
-    return 'No return URL';
+    return 'Invalid return URL';
   }
 
   const body = await readBody(event);
@@ -62,7 +61,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const { currency, language } = punchoutContext(event);
-  const client = createAuthedClient(event, getCookie(event, 'access_token'));
+  const client = createAuthedClient(event, requestBearer(event));
   const cartService = new CartService(client);
 
   let cart: PunchoutCart;
@@ -74,7 +73,7 @@ export default defineEventHandler(async (event) => {
       imageVariantFilters: CART_IMAGE_FILTERS.imageVariantFilters,
     })) as unknown as PunchoutCart;
   } catch (err) {
-    console.error('[punchout] cart load failed:', err instanceof Error ? err.message : err);
+    console.error('[punchout] cart load failed:', errorSummary(err));
     setResponseStatus(event, 502);
     return 'Could not load cart';
   }
@@ -118,9 +117,10 @@ export default defineEventHandler(async (event) => {
     } catch {
       /* non-fatal: the ERP already has the payload */
     }
-    deleteCookie(event, PUNCHOUT_COOKIE, { path: '/' });
-    deleteCookie(event, PUNCHOUT_FLAG_COOKIE, { path: '/' });
+    clearPunchout(event);
   }
+  const csp = getResponseHeader(event, 'content-security-policy');
+  if (typeof csp === 'string') setResponseHeader(event, 'content-security-policy', allowFormTarget(csp, hook.origin));
   setResponseHeader(event, 'content-type', 'text/html; charset=utf-8');
   return html;
 });

@@ -9,6 +9,7 @@
  * directly (no explicit urlencoded parser as in the Express host).
  */
 
+import { errorSummary } from '../../utils/httpGuards';
 import { getMollieProvider, isMollieEnabled } from '../../utils/mollie';
 
 interface WebhookBody {
@@ -36,7 +37,7 @@ export default defineEventHandler(async (event) => {
       console.warn('[mollie] webhook not processed:', result.error, 'payment:', id);
     }
   } catch (e) {
-    console.error('[mollie] webhook handler error:', e instanceof Error ? e.message : e);
+    console.error('[mollie] webhook handler error:', errorSummary(e));
   }
 
   // Always 200 — Mollie treats any non-2xx as failure and retries.

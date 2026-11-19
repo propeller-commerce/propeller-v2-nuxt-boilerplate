@@ -7,22 +7,17 @@
  * talks DIRECTLY to upstream (carrying the order-editor key itself — see
  * server/utils/mollie.ts), not via the /api/graphql proxy.
  *
+ * Body: `{ orderId, method, redirectUrl? }`. Only the caller's own UNFINISHED
+ * order; amount, currency and return URL come from the server-fetched order
+ * and the site URL, never from the body (#19, server/utils/paymentAccess.ts).
+ *
  * Returns `{ ok, checkoutUrl, paymentId }` on success; the client redirects the
  * shopper to `checkoutUrl` and stashes `paymentId` for the return page.
  */
 
-import { getMollieProvider, isMollieEnabled, isOnAccountMethod } from '../../utils/mollie';
-
-interface CreatePaymentBody {
-  orderId?: number;
-  amount?: number | string;
-  currency?: string;
-  method?: string;
-  description?: string;
-  redirectUrl?: string;
-  userId?: number;
-  anonymousId?: number;
-}
+import { getMollieProvider, isMollieEnabled } from '../../utils/mollie';
+import { preparePayment } from '../../utils/paymentAccess';
+import { errorSummary } from '../../utils/httpGuards';
 
 export default defineEventHandler(async (event) => {
   if (!isMollieEnabled(event)) {
@@ -30,41 +25,16 @@ export default defineEventHandler(async (event) => {
     return { error: 'mollie not configured' };
   }
 
-  const b = (await readBody<CreatePaymentBody>(event)) || {};
-  const valid =
-    typeof b.orderId === 'number' &&
-    (typeof b.amount === 'number' || typeof b.amount === 'string') &&
-    typeof b.currency === 'string' &&
-    typeof b.method === 'string' &&
-    typeof b.description === 'string' &&
-    typeof b.redirectUrl === 'string';
-  if (!valid) {
-    setResponseStatus(event, 400);
-    return { error: 'missing or invalid fields' };
-  }
-
-  // Defense in depth: on-account methods must never reach the PSP. The client
-  // already skips Mollie for these, but guard server-side too.
-  if (isOnAccountMethod(event, b.method)) {
-    setResponseStatus(event, 400);
-    return { error: 'on-account method does not use a PSP' };
-  }
-
   try {
-    const result = await getMollieProvider(event).createPayment({
-      orderId: b.orderId!,
-      amount: b.amount!,
-      currency: b.currency!,
-      method: b.method!,
-      description: b.description!,
-      redirectUrl: b.redirectUrl!,
-      ...(b.userId !== undefined ? { userId: b.userId } : {}),
-      ...(b.anonymousId !== undefined ? { anonymousId: b.anonymousId } : {}),
-    });
+    const prepared = await preparePayment(event, 'mollie');
+    if ('error' in prepared) {
+      setResponseStatus(event, prepared.status);
+      return { error: prepared.error };
+    }
+    const result = await getMollieProvider(event).createPayment(prepared.args);
     return { ok: true, ...result };
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'payment creation failed';
-    console.error('[mollie] create-payment failed:', message);
+    console.error('[mollie] create-payment failed:', errorSummary(e));
     setResponseStatus(event, 500);
     return { error: 'payment creation failed' };
   }
