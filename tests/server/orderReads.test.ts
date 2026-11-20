@@ -197,6 +197,10 @@ test('order revisions, addresses, shipments, tenders and payments are order read
     '{ payments(input: {}) { items { orderId amount } } }',
     '{ p: payments(input: {}) { itemsFound } }',
     'query { ...P } fragment P on Query { payment(searchBy: { orderId: 2621 }) { amount } }',
+    // Nested, as in Next and Vue.
+    '{ viewer { __typename } shipments(input: {}) { itemsFound } }',
+    '{ viewer { ... on Contact { payments { itemsFound } } } }',
+    '{ viewer { ...V } } fragment V on Contact { tender { tenderId } }',
   ]) {
     assert.equal(readsOrders(doc(query)), true, query);
     assert.equal(await allowed(query, { viewer: contact, lastOrder: last(2621) }), false, query);

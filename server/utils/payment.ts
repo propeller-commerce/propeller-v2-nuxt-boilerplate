@@ -6,6 +6,10 @@
 
 import type { RateLimiter, RateLimitRule } from './rateLimit.ts';
 
+/** The order as the payment routes read it, with the order-editor key. */
+export const PAYMENT_ORDER_QUERY =
+  'query paymentOrder($orderId: Int) { order(orderId: $orderId) { id userId status currency total { net } } }';
+
 /** The fields of an order the payment routes read (fetched with the order-editor key). */
 export interface PayableOrder {
   id: number;

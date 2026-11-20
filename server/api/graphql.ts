@@ -39,10 +39,12 @@ import { forPriceViewer } from '../utils/hidePrices';
 import {
   checkoutMutationAllowed,
   classifyOperation,
+  contactRegisterParentId,
   createdOrderId,
   createSpentLog,
   LAST_ORDER_COOKIE,
   LAST_ORDER_MAX_AGE,
+  ORDER_OWNER_QUERY,
   orderReadAllowed,
   readsOrders,
   settleReserved,
@@ -64,10 +66,14 @@ import {
 import { formRateLimiter, type RateLimitRule } from '../utils/rateLimit';
 import {
   companyCreateVariables,
+  CONTACT_FLAG,
   createdCompanyId,
+  mayRegisterContact,
+  registeredContact,
   REGISTRATION_COOKIE,
   REGISTRATION_MAX_AGE,
   registrationStep,
+  selectsContactRegister,
   signRegistration,
   verifyRegistration,
 } from '../utils/registrationRouting';
@@ -114,7 +120,7 @@ async function orderOwner(
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: orderKey },
       body: JSON.stringify({
-        query: 'query proxyOrderOwner($orderId: Int) { order(orderId: $orderId) { status userId } }',
+        query: ORDER_OWNER_QUERY,
         variables: { orderId },
       }),
       signal: AbortSignal.timeout(10_000),
@@ -272,6 +278,12 @@ export default defineEventHandler(async (event) => {
     if (!checkoutMutationAllowed(doc, useOrderKey)) {
       return graphqlError(event, 403, "Forbidden: checkout steps run only for this browser's own order");
     }
+    // contactRegister runs only as a manager's elevated call or as this browser's own self-registration.
+    const contactStep =
+      !useOrderKey && selectsContactRegister(doc)
+        ? mayRegisterContact(contactRegisterParentId(single, variables), { isAnonymous, registration })
+        : null;
+    if (contactStep === false) return graphqlError(event, 403, 'Forbidden: contact registration is not allowed here');
     const apiKey = useOrderKey ? orderKey : config.boilerplateApiKey;
     if (!apiKey) return graphqlError(event, 503, 'API key not configured', 'SERVICE_UNAVAILABLE');
 
@@ -345,7 +357,9 @@ export default defineEventHandler(async (event) => {
       ? signRegistration(secret, newCompanyId)
       : regStep?.kind === 'address' && registration && ok
         ? signRegistration(secret, regStep.companyId, registration.used + regStep.flag)
-        : '';
+        : contactStep && registration && registeredContact(json)
+          ? signRegistration(secret, registration.companyId, registration.used + CONTACT_FLAG)
+          : '';
     if (regCookie) setCookie(event, REGISTRATION_COOKIE, regCookie, cookieOptions(REGISTRATION_MAX_AGE));
 
     return text;

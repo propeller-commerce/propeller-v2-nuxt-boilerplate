@@ -10,11 +10,8 @@ import { getCookie, getRequestURL, readBody } from 'h3';
 import { useRuntimeConfig } from 'nitropack/runtime';
 import { isOnAccountMethod } from './mollie';
 import { LAST_ORDER_COOKIE, verifyLastOrder } from './orderEditorRouting';
-import { payable, pspReturnUrl, type PayableOrder, type PspProvider } from './payment';
+import { PAYMENT_ORDER_QUERY, payable, pspReturnUrl, type PayableOrder, type PspProvider } from './payment';
 import { cookieSigningSecret, requestBearer, sameOrigin, verifiedViewer } from './requestAuth';
-
-const ORDER_QUERY =
-  'query paymentOrder($orderId: Int) { order(orderId: $orderId) { id userId status currency total { net } } }';
 
 /** The order, read with the order-editor key (the storefront key may not read orders); null if unknown. */
 export async function fetchPayableOrder(event: H3Event, orderId: number): Promise<PayableOrder | null> {
@@ -22,7 +19,7 @@ export async function fetchPayableOrder(event: H3Event, orderId: number): Promis
   const res = await fetch(String(config.boilerplateGraphqlEndpoint || ''), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: String(config.boilerplateOrderEditorApiKey || '') },
-    body: JSON.stringify({ query: ORDER_QUERY, variables: { orderId } }),
+    body: JSON.stringify({ query: PAYMENT_ORDER_QUERY, variables: { orderId } }),
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`order lookup ${res.status}`);
@@ -75,11 +72,14 @@ export async function preparePayment(
   // On-account methods never reach the PSP.
   if (isOnAccountMethod(event, method)) return { status: 400, error: 'on-account method does not use a PSP' };
 
-  const order = await fetchPayableOrder(event, orderId);
+  // Unknown and someone else's order answer alike, and a caller with neither cookie nor viewer costs no lookup.
+  const forbidden = { status: 403, error: 'forbidden' };
   const viewer = await verifiedViewer(event, requestBearer(event));
+  const viaCookie = lastOrderId(event) === orderId;
+  if (!viaCookie && !viewer) return forbidden;
+  const order = await fetchPayableOrder(event, orderId);
   const viewerOwns = !!viewer && !!order && order.userId === viewer.userId;
-  if (!order) return { status: 404, error: 'order not found' };
-  if (!viewerOwns && lastOrderId(event) !== orderId) return { status: 403, error: 'forbidden' };
+  if (!order || (!viaCookie && !viewerOwns)) return forbidden;
 
   const config = useRuntimeConfig(event);
   const charge = payable(order, String(config.public?.currencyCode || 'EUR'));

@@ -5,6 +5,30 @@ All notable changes to the propeller-nuxt boilerplate are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.1] - 2026-11-20
+
+Follow-up to the 2026-11 security review (PWP-1120).
+
+### Security
+
+- Order data fields (revisions, addresses, shipments, tenders, payments) are refused at any depth of a
+  query unless the document is one of the SDK's own order reads, as in Next and Vue; before, only
+  top-level ones were. (PWP-1122)
+- create-payment answers 403 alike for an unknown order and someone else's, and looks up no order for a
+  caller with neither the order's cookie nor a login; before, a 404 told which order ids exist. (PWP-1127)
+- **`contactRegister` runs only as an authorization manager's elevated call, or as a guest's
+  self-registration into the company its browser just created** (signed registration cookie), once.
+  Before, a guest could create a contact inside any existing company: the storefront key accepts any
+  `parentId`. Everything else is refused in the proxy, also when `contactRegister` is aliased or sent
+  next to other fields. (PWP-1145)
+
+### Tests
+
+- The hand-written GraphQL queries (viewer, order owner, payment order) are validated against a snapshot of
+  the Propeller schema (`tests/fixtures/propeller-schema.graphql`, descriptions stripped). Refresh it with
+  `node scripts/update-propeller-schema.mjs <path-to-sdl>`. The order-owner and payment-order queries moved
+  to `server/utils/orderEditorRouting.ts` and `server/utils/payment.ts` so the test can import them.
+
 ## [1.22.0] - 2026-11-19
 
 Security release: covers the 2026-11 security review (PWP-1120).

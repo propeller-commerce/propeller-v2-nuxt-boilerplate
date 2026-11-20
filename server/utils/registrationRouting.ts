@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { print, type DocumentNode } from 'graphql';
+import { BREAK, Kind, print, visit, type DocumentNode } from 'graphql';
 import type { SingleField } from './orderEditorRouting.ts';
 import { signCookieValue, verifyCookieValue } from './signedCookie.ts';
 
@@ -76,8 +76,38 @@ export function signRegistration(secret: string, companyId: number, used = '', n
 
 export function verifyRegistration(secret: string, value: string | null | undefined, now?: number): Registration | null {
   const payload = verifyCookieValue(secret, REGISTRATION_PURPOSE, value, now);
-  const match = payload ? /^([1-9]\d{0,14}):([id]{0,2})$/.exec(payload) : null;
+  const match = payload ? /^([1-9]\d{0,14}):([idc]{0,3})$/.exec(payload) : null;
   return match ? { companyId: Number(match[1]), used: match[2]! } : null;
+}
+
+/** Cookie flag for the contact registered into the new company. */
+export const CONTACT_FLAG = 'c';
+
+/** Whether a contactRegister response created a contact (an anonymous one also carries partial errors). */
+export function registeredContact(response: unknown): boolean {
+  return !!(response as { data?: { contactRegister?: unknown } } | null)?.data?.contactRegister;
+}
+
+/** Whether `doc` selects contactRegister anywhere (aliases, several fields, fragments). */
+export function selectsContactRegister(doc: DocumentNode): boolean {
+  let found = false;
+  visit(doc, {
+    [Kind.FIELD](node) {
+      if (node.name.value !== 'contactRegister') return undefined;
+      found = true;
+      return BREAK;
+    },
+  });
+  return found;
+}
+
+/**
+ * Whether an anonymous contactRegister is this browser's own self-registration: into the company it
+ * just created (signed cookie), once. The storefront key accepts any existing `parentId`.
+ */
+export function mayRegisterContact(parentId: number | null, ctx: RegistrationContext): boolean {
+  const reg = ctx.registration;
+  return ctx.isAnonymous && !!reg && parentId === reg.companyId && !reg.used.includes(CONTACT_FLAG);
 }
 
 // The fields RegisterForm sends; anything else (debtorId, parentId, …) could tie the new company to an existing one.

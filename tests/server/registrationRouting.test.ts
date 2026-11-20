@@ -4,15 +4,19 @@ import { pathToFileURL } from 'node:url';
 import { parse } from 'graphql';
 import {
   companyCreateVariables,
+  CONTACT_FLAG,
   createdCompanyId,
   documentHash,
+  mayRegisterContact,
+  registeredContact,
   REGISTRATION_DOCUMENT_HASHES,
   registrationStep,
+  selectsContactRegister,
   signRegistration,
   verifyRegistration,
   type RegistrationContext,
 } from '../../server/utils/registrationRouting.ts';
-import { singleTopLevelField, verifyLastOrder } from '../../server/utils/orderEditorRouting.ts';
+import { contactRegisterParentId, singleTopLevelField, verifyLastOrder } from '../../server/utils/orderEditorRouting.ts';
 
 const SECRET = 'cookie-signing-test-secret';
 const OPS = 'node_modules/@propeller-commerce/propeller-sdk-v2/dist/esm/generated/operations/';
@@ -95,4 +99,36 @@ test('an elevated companyCreate keeps only the registration fields', () => {
     contactSearchArguments: { page: 1 },
   });
   assert.deepEqual(companyCreateVariables(null), { input: {} });
+});
+
+test('an anonymous contactRegister is allowed only into the company this browser just created, once', () => {
+  const reg = (used = '') => ({ companyId: 77, used });
+  assert.equal(mayRegisterContact(77, { isAnonymous: true, registration: reg() }), true);
+  assert.equal(mayRegisterContact(77, { isAnonymous: true, registration: reg('id') }), true);
+  // Another company, no cookie, no parentId, already registered, or a logged-in caller.
+  assert.equal(mayRegisterContact(78, { isAnonymous: true, registration: reg() }), false);
+  assert.equal(mayRegisterContact(77, { isAnonymous: true, registration: null }), false);
+  assert.equal(mayRegisterContact(null, { isAnonymous: true, registration: reg() }), false);
+  assert.equal(mayRegisterContact(77, { isAnonymous: true, registration: reg(CONTACT_FLAG) }), false);
+  assert.equal(mayRegisterContact(77, { isAnonymous: false, registration: reg() }), false);
+});
+
+test('contactRegister is found anywhere in a document; parentId is read from a single field only', () => {
+  assert.equal(selectsContactRegister(parse('mutation { a: contactRegister(input: { email: "x", parentId: 1 }) { __typename } }')), true);
+  assert.equal(selectsContactRegister(parse('mutation { companyCreate(input: {}) { companyId } b: contactRegister(input: { email: "x", parentId: 2 }) { __typename } }')), true);
+  assert.equal(selectsContactRegister(parse('mutation { companyCreate(input: {}) { companyId } }')), false);
+  const one = parse('mutation r($i: RegisterContactInput!) { contactRegister(input: $i) { __typename } }');
+  assert.equal(contactRegisterParentId(singleTopLevelField(one), { i: { parentId: 77 } }), 77);
+  const two = parse('mutation { a: contactRegister(input: { email: "x", parentId: 77 }) { __typename } b: contactRegister(input: { email: "y", parentId: 78 }) { __typename } }');
+  assert.equal(contactRegisterParentId(singleTopLevelField(two), {}), null);
+});
+
+test('the registration cookie carries the contact flag next to the address flags', () => {
+  assert.deepEqual(verifyRegistration(SECRET, signRegistration(SECRET, 77, 'cid')), { companyId: 77, used: 'cid' });
+});
+
+test('a contact counts as registered when the response carries it, even with partial errors', () => {
+  assert.equal(registeredContact({ data: { contactRegister: { contact: { contactId: 1 } } }, errors: [{ message: 'Unauthorized' }] }), true);
+  assert.equal(registeredContact({ data: { contactRegister: null }, errors: [{ message: 'Email exists' }] }), false);
+  assert.equal(registeredContact(null), false);
 });

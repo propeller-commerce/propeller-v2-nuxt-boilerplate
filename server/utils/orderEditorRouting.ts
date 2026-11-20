@@ -138,6 +138,12 @@ function positiveId(value: unknown): number | null {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
+/** `input.parentId` of a single contactRegister mutation, else null. */
+export function contactRegisterParentId(single: SingleField | null, variables: unknown): number | null {
+  if (single?.operation !== 'mutation' || single.field.name.value !== 'contactRegister') return null;
+  return positiveId(inputObject(single, variables)?.parentId);
+}
+
 // The checkout sets a new order to NEW (order), REQUEST (quote request) or UNFINISHED (via a PSP,
 // whose webhook finalizes it), with payment OPEN. Nothing else is elevated.
 const CHECKOUT_STATUSES = new Set(['NEW', 'REQUEST', 'UNFINISHED']);
@@ -217,10 +223,13 @@ export function checkoutMutationAllowed(doc: DocumentNode, elevated: boolean): b
  */
 export const ORDER_READ_FIELDS: ReadonlySet<string> = new Set(['order', 'orders', 'orderGetPDF', 'quoteGetPDF']);
 
+/** An order's owner and status, read with the order-editor key before serving an order read. */
+export const ORDER_OWNER_QUERY = 'query proxyOrderOwner($orderId: Int) { order(orderId: $orderId) { status userId } }';
+
 /**
  * Query fields reading an order's revisions, addresses, shipments, tender or payments by a
  * caller-chosen id. The storefront never sends them and the storefront key answers some for anyone:
- * always refused. Root fields only, as Order has `orderAddresses` and `shipments` of its own.
+ * refused at any depth unless the document is one of the SDK's own order reads (Next and Vue alike).
  */
 export const ORDER_DATA_FIELDS: ReadonlySet<string> = new Set([
   'orderRevision',
@@ -252,22 +261,21 @@ export function readsOrders(doc: DocumentNode): boolean {
   const fragments = new Map<string, FragmentDefinitionNode>();
   for (const def of doc.definitions) if (def.kind === Kind.FRAGMENT_DEFINITION) fragments.set(def.name.value, def);
   const seen = new Set<string>();
-  const walk = (set: SelectionSetNode, root: boolean): boolean =>
+  const walk = (set: SelectionSetNode): boolean =>
     set.selections.some((sel) => {
       if (sel.kind === Kind.FIELD) {
         const name = sel.name.value;
-        if (ORDER_READ_FIELDS.has(name) || (root && ORDER_DATA_FIELDS.has(name))) return true;
-        return !!sel.selectionSet && walk(sel.selectionSet, false);
+        if (ORDER_READ_FIELDS.has(name) || ORDER_DATA_FIELDS.has(name)) return true;
+        return !!sel.selectionSet && walk(sel.selectionSet);
       }
-      if (sel.kind === Kind.INLINE_FRAGMENT) return walk(sel.selectionSet, root);
+      if (sel.kind === Kind.INLINE_FRAGMENT) return walk(sel.selectionSet);
       const fragment = fragments.get(sel.name.value);
-      const key = `${sel.name.value}:${root}`;
-      if (!fragment || seen.has(key)) return false;
-      seen.add(key);
-      return walk(fragment.selectionSet, root);
+      if (!fragment || seen.has(sel.name.value)) return false;
+      seen.add(sel.name.value);
+      return walk(fragment.selectionSet);
     });
   return doc.definitions.some(
-    (def) => def.kind === Kind.OPERATION_DEFINITION && def.operation !== 'mutation' && walk(def.selectionSet, true),
+    (def) => def.kind === Kind.OPERATION_DEFINITION && def.operation !== 'mutation' && walk(def.selectionSet),
   );
 }
 
