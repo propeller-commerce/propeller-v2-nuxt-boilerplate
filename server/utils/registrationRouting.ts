@@ -88,17 +88,30 @@ export function registeredContact(response: unknown): boolean {
   return !!(response as { data?: { contactRegister?: unknown } } | null)?.data?.contactRegister;
 }
 
-/** Whether `doc` selects contactRegister anywhere (aliases, several fields, fragments). */
-export function selectsContactRegister(doc: DocumentNode): boolean {
+/** Whether `doc` selects the field `name` anywhere (aliases, several fields, fragments). */
+export function selectsField(doc: DocumentNode, name: string): boolean {
   let found = false;
   visit(doc, {
     [Kind.FIELD](node) {
-      if (node.name.value !== 'contactRegister') return undefined;
+      if (node.name.value !== name) return undefined;
       found = true;
       return BREAK;
     },
   });
   return found;
+}
+
+/** Whether `doc` selects contactRegister anywhere. */
+export const selectsContactRegister = (doc: DocumentNode): boolean => selectsField(doc, 'contactRegister');
+
+/** Only self-registration creates a company; any other document selecting this is refused. */
+export const COMPANY_CREATE_FIELD = 'companyCreate';
+
+/** An hourly limit from the environment: a whole number, 0 for none; anything else keeps `fallback`. */
+export function hourlyLimit(value: string | undefined, fallback: number): { limit: number; windowMs: number } {
+  const raw = (value ?? '').trim();
+  const n = /^\d{1,6}$/.test(raw) ? Number(raw) : fallback;
+  return { limit: n === 0 ? Number.MAX_SAFE_INTEGER : n, windowMs: 60 * 60_000 };
 }
 
 /**

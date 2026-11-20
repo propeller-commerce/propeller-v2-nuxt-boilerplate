@@ -65,15 +65,18 @@ import {
 } from '../utils/proxyGuards';
 import { formRateLimiter, type RateLimitRule } from '../utils/rateLimit';
 import {
+  COMPANY_CREATE_FIELD,
   companyCreateVariables,
   CONTACT_FLAG,
   createdCompanyId,
+  hourlyLimit,
   mayRegisterContact,
   registeredContact,
   REGISTRATION_COOKIE,
   REGISTRATION_MAX_AGE,
   registrationStep,
   selectsContactRegister,
+  selectsField,
   signRegistration,
   verifyRegistration,
 } from '../utils/registrationRouting';
@@ -84,9 +87,11 @@ import type { Viewer } from '../utils/viewer';
 
 const ORDER_EDITOR_CLIENT_ID = 'order-editor';
 
-// Each elevated companyCreate creates a company in Propeller.
-const REGISTRATION_PER_IP: RateLimitRule = { limit: 5, windowMs: 60 * 60_000 };
-const REGISTRATION_GLOBAL: RateLimitRule = { limit: 30, windowMs: 60 * 60_000 };
+// Each elevated companyCreate creates a company in Propeller: per IP and in total per hour (default 5 and 30).
+const registrationLimits = (): readonly [RateLimitRule, RateLimitRule] => [
+  hourlyLimit(process.env.REGISTRATION_LIMIT_PER_IP, 5),
+  hourlyLimit(process.env.REGISTRATION_LIMIT_TOTAL, 30),
+];
 
 // Elevated checkout mutations already run, per order (see createSpentLog).
 const spentElevations = createSpentLog();
@@ -215,11 +220,16 @@ export default defineEventHandler(async (event) => {
   // ── Self-registration (#12): the SDK's own companyCreate / companyAddressCreate ──
   const registration = secret ? verifyRegistration(secret, getCookie(event, REGISTRATION_COOKIE)) : null;
   const regStep = secret ? registrationStep(single, doc, variables, { isAnonymous, registration }) : null;
+  // A company is created only by that step, never by another document on the storefront key.
+  if (regStep?.kind !== 'company' && selectsField(doc, COMPANY_CREATE_FIELD)) {
+    return graphqlError(event, 403, 'Forbidden: company registration is not allowed here');
+  }
   if (regStep?.kind === 'company') {
     const ip = requestClientIp(event);
+    const [perIp, total] = registrationLimits();
     for (const [key, rule] of [
-      [`registration-company:${ip}`, REGISTRATION_PER_IP],
-      ['registration-company:*', REGISTRATION_GLOBAL],
+      [`registration-company:${ip}`, perIp],
+      ['registration-company:*', total],
     ] as const) {
       const hit = formRateLimiter.hit(key, rule);
       if (!hit.allowed) {
