@@ -39,6 +39,7 @@ import { forPriceViewer } from '../utils/hidePrices';
 import {
   checkoutMutationAllowed,
   classifyOperation,
+  CONTACT_REGISTER_DOCUMENT_HASH,
   contactRegisterParentId,
   createdOrderId,
   createSpentLog,
@@ -69,6 +70,7 @@ import {
   companyCreateVariables,
   CONTACT_FLAG,
   createdCompanyId,
+  documentHash,
   hourlyLimit,
   mayRegisterContact,
   registeredContact,
@@ -284,16 +286,20 @@ export default defineEventHandler(async (event) => {
   if (gate && hasPriceFilter(variables) && !(await canSee)) variables = withoutPriceFilters(variables);
 
   try {
-    const useOrderKey = orderRead || !!regStep || (await elevates(choice, viewer, upstream, orderKey));
+    // Self-registration's contact step: the SDK's own contactRegister, anonymous, into the company this
+    // browser just created, once. It needs the order-editor key, like the company and address steps.
+    const contactStep =
+      !!secret &&
+      documentHash(doc) === CONTACT_REGISTER_DOCUMENT_HASH &&
+      mayRegisterContact(contactRegisterParentId(single, variables), { isAnonymous, registration });
+    const useOrderKey = orderRead || !!regStep || contactStep || (await elevates(choice, viewer, upstream, orderKey));
     if (!checkoutMutationAllowed(doc, useOrderKey)) {
       return graphqlError(event, 403, "Forbidden: checkout steps run only for this browser's own order");
     }
-    // contactRegister runs only as a manager's elevated call or as this browser's own self-registration.
-    const contactStep =
-      !useOrderKey && selectsContactRegister(doc)
-        ? mayRegisterContact(contactRegisterParentId(single, variables), { isAnonymous, registration })
-        : null;
-    if (contactStep === false) return graphqlError(event, 403, 'Forbidden: contact registration is not allowed here');
+    // contactRegister runs only elevated: a manager's call or this browser's own self-registration.
+    if (!useOrderKey && selectsContactRegister(doc)) {
+      return graphqlError(event, 403, 'Forbidden: contact registration is not allowed here');
+    }
     const apiKey = useOrderKey ? orderKey : config.boilerplateApiKey;
     if (!apiKey) return graphqlError(event, 503, 'API key not configured', 'SERVICE_UNAVAILABLE');
 
@@ -310,7 +316,7 @@ export default defineEventHandler(async (event) => {
     // Forward the Bearer and Accept-Language only; X-Client-ID is server-internal. Registration and
     // order reads go without the Bearer, so only the order-editor key decides.
     const headers: Record<string, string> = { 'Content-Type': 'application/json', apikey: apiKey };
-    if (auth && !regStep && !orderRead) headers.Authorization = auth;
+    if (auth && !regStep && !orderRead && !contactStep) headers.Authorization = auth;
     const acceptLang = getHeader(event, 'accept-language');
     if (acceptLang) headers['Accept-Language'] = acceptLang;
 
